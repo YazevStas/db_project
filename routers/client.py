@@ -1,129 +1,84 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+# routers/client.py
+# --- Упрощена логика, используются правильные зависимости ---
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from database import crud, models
-from database.session import get_db
-from services.auth import get_current_user
+from database import crud, models, get_db
+from services.auth import require_role
 from datetime import datetime
 
 router = APIRouter()
+ProtectedUser = Depends(require_role("client"))
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard", response_class=RedirectResponse)
 async def client_dashboard(
     request: Request, 
-    user: models.User = Depends(get_current_user),
+    user: models.User = ProtectedUser,
     db: Session = Depends(get_db)
 ):
-    if user.role != "client":
-        return RedirectResponse(url="/", status_code=303)
-    
-    # Получение данных текущего клиента
-    client = db.query(models.Client).filter(models.Client.id == user.client_id).first()
+    client = crud.get_client(db, user.client_id)
     subscriptions = crud.get_client_subscriptions(db, user.client_id)
     attendances = crud.get_client_attendances(db, user.client_id)
-    trainings = db.query(models.Training).join(
-        models.TrainingParticipant,
-        models.TrainingParticipant.training_id == models.Training.id
-    ).filter(
-        models.TrainingParticipant.client_id == user.client_id,
+    
+    # Все доступные тренировки для записи
+    available_trainings = db.query(models.Training).filter(
         models.Training.start_time > datetime.now()
     ).all()
     
-    return request.app.templates.TemplateResponse(
-        "client.html",
-        {
-            "request": request,
-            "client": client,
-            "subscriptions": subscriptions,
-            "attendances": attendances,
-            "trainings": trainings,
-            "current_user": user
-        }
-    )
+    context = {
+        "request": request,
+        "client": client,
+        "subscriptions": subscriptions,
+        "attendances": attendances,
+        "available_trainings": available_trainings
+    }
+    return request.app.state.templates.TemplateResponse("client.html", context)
 
 @router.post("/update_profile")
 async def update_profile(
-    request: Request,
-    user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: models.User = ProtectedUser,
+    db: Session = Depends(get_db),
+    last_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(None)
+    # Контакты можно добавить как отдельные поля, если нужно
 ):
-    if user.role != "client":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    form_data = await request.form()
-    client = db.query(models.Client).filter(models.Client.id == user.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    client.last_name = form_data.get("last_name", client.last_name)
-    client.first_name = form_data.get("first_name", client.first_name)
-    client.middle_name = form_data.get("middle_name", client.middle_name)
-    
-    # Обновление контактов
-    phone = form_data.get("phone")
-    email = form_data.get("email")
-    
-    # Обновление или добавление телефона
-    phone_contact = db.query(models.ClientContact).filter(
-        models.ClientContact.client_id == user.client_id,
-        models.ClientContact.contact_type == "phone"
-    ).first()
-    
-    if phone_contact:
-        phone_contact.contact_value = phone
-    else:
-        phone_contact = models.ClientContact(
-            client_id=user.client_id,
-            contact_type="phone",
-            contact_value=phone
-        )
-        db.add(phone_contact)
-    
-    # Обновление или добавление email
-    email_contact = db.query(models.ClientContact).filter(
-        models.ClientContact.client_id == user.client_id,
-        models.ClientContact.contact_type == "email"
-    ).first()
-    
-    if email_contact:
-        email_contact.contact_value = email
-    else:
-        email_contact = models.ClientContact(
-            client_id=user.client_id,
-            contact_type="email",
-            contact_value=email
-        )
-        db.add(email_contact)
-    
-    db.commit()
-    return RedirectResponse(url="/client/dashboard", status_code=303)
+    client = crud.get_client(db, user.client_id)
+    if client:
+        client.last_name = last_name
+        client.first_name = first_name
+        client.middle_name = middle_name
+        db.commit()
+        return RedirectResponse(url="/client/dashboard?message=Профиль успешно обновлен", status_code=303)
+    return RedirectResponse(url="/client/dashboard?error=Клиент не найден", status_code=303)
 
 @router.post("/book_training")
 async def book_training(
-    request: Request,
-    user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: models.User = ProtectedUser,
+    db: Session = Depends(get_db),
+    training_id: str = Form(...)
 ):
-    if user.role != "client":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    form_data = await request.form()
-    training_id = form_data.get("training_id")
-    
     # Проверка, не записан ли уже клиент
-    existing_booking = db.query(models.TrainingParticipant).filter(
-        models.TrainingParticipant.training_id == training_id,
-        models.TrainingParticipant.client_id == user.client_id
+    existing_booking = db.query(models.TrainingParticipant).filter_by(
+        training_id=training_id, client_id=user.client_id
     ).first()
     
     if existing_booking:
-        return RedirectResponse(url="/client/dashboard", status_code=303)
+        return RedirectResponse(url="/client/dashboard?error=Вы уже записаны на эту тренировку", status_code=303)
     
+    # Проверка лимита участников (триггер в БД должен это делать, но дублируем для UX)
+    training = db.query(models.Training).get(training_id)
+    current_participants = db.query(models.TrainingParticipant).filter_by(training_id=training_id).count()
+
+    if current_participants >= training.max_participants:
+         return RedirectResponse(url="/client/dashboard?error=На тренировку нет мест", status_code=303)
+
     new_booking = models.TrainingParticipant(
         training_id=training_id,
         client_id=user.client_id,
-        status_name="pending"  # Ожидает подтверждения
+        status_name="confirmed"
     )
     db.add(new_booking)
     db.commit()
-    return RedirectResponse(url="/client/dashboard", status_code=303)
+    return RedirectResponse(url="/client/dashboard?message=Вы успешно записаны на тренировку", status_code=303)

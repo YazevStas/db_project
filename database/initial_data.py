@@ -1,10 +1,22 @@
+# database/initial_data.py
+
 from sqlalchemy.orm import Session
-from . import models
-from .crud import create_user, create_client, create_staff, create_subscription
+from . import models, crud  # Импортируем модуль crud, чтобы использовать его функции
 from datetime import datetime, timedelta
 
 def initialize_database(db: Session):
-    # Создание статусов
+    """
+    Заполняет базу данных начальными данными (справочники, тестовые пользователи, клиенты и т.д.),
+    только если база данных пуста.
+    """
+    # Проверяем, есть ли уже данные, чтобы не дублировать их при перезапуске
+    if db.query(models.User).first():
+        return
+
+    print("База данных пуста. Создание начальных данных...")
+
+    # 1. Создание справочников (статусы, должности, методы оплаты)
+    # ------------------------------------------------------------------
     statuses = [
         models.Status(name="active", description="Активный"),
         models.Status(name="expired", description="Истекший"),
@@ -13,191 +25,90 @@ def initialize_database(db: Session):
         models.Status(name="confirmed", description="Подтвержден"),
         models.Status(name="cancelled", description="Отменен"),
     ]
-    for status in statuses:
-        db.add(status)
-    
-    # Создание должностей
+    db.add_all(statuses)
+
     positions = [
-        models.Position(
-            id="pos001", 
-            name="Администратор", 
-            min_salary=50000, 
-            max_salary=80000
-        ),
-        models.Position(
-            id="pos002", 
-            name="Тренер", 
-            min_salary=60000, 
-            max_salary=100000
-        ),
-        models.Position(
-            id="pos003", 
-            name="Кассир", 
-            min_salary=40000, 
-            max_salary=60000
-        ),
-        models.Position(
-            id="pos004", 
-            name="Технический администратор", 
-            min_salary=70000, 
-            max_salary=120000
-        ),
+        models.Position(id="pos_admin", name="Администратор", min_salary=50000, max_salary=80000),
+        models.Position(id="pos_trainer", name="Тренер", min_salary=60000, max_salary=100000),
+        models.Position(id="pos_cashier", name="Кассир", min_salary=40000, max_salary=60000),
+        models.Position(id="pos_tech", name="Тех. администратор", min_salary=70000, max_salary=120000),
+        models.Position(id="pos_manager", name="Менеджер", min_salary=55000, max_salary=90000),
     ]
-    for position in positions:
-        db.add(position)
-    
-    # Создание методов оплаты
+    db.add_all(positions)
+
     payment_methods = [
         models.PaymentMethod(id="cash", name="Наличные"),
         models.PaymentMethod(id="card", name="Банковская карта"),
     ]
-    for method in payment_methods:
-        db.add(method)
+    db.add_all(payment_methods)
     
+    # Делаем commit, чтобы справочники были доступны для использования в следующих шагах
     db.commit()
-    
-    # Создание клиентов
-    clients = [
-        create_client(db, {
-            "last_name": "Иванов",
-            "first_name": "Иван",
-            "middle_name": "Иванович",
-            "reg_date": datetime.now() - timedelta(days=30),
-            "discount": 10.0
-        }),
-        create_client(db, {
-            "last_name": "Петрова",
-            "first_name": "Мария",
-            "reg_date": datetime.now() - timedelta(days=15),
-            "discount": 5.0
-        }),
+
+    # 2. Создание основных сущностей (клиенты, сотрудники, пользователи)
+    # ---------------------------------------------------------------------
+
+    # Создаем клиентов через crud-функцию
+    client1 = crud.create_client(db, {
+        "last_name": "Петров", "first_name": "Петр", "middle_name": "Петрович",
+        "reg_date": datetime.now().date() - timedelta(days=50), "discount": 5.0
+    })
+    client2 = crud.create_client(db, {
+        "last_name": "Васильева", "first_name": "Анна",
+        "reg_date": datetime.now().date() - timedelta(days=10), "discount": 0.0
+    })
+
+    # Создаем сотрудников через crud-функцию
+    staff_admin = crud.create_staff(db, {
+        "last_name": "Админов", "first_name": "Админ", "birth_date": datetime(1990, 1, 1),
+        "gender": "М", "inn": "111111111111", "snils": "11111111111",
+        "hire_date": datetime(2022, 1, 1), "position_id": "pos_admin"
+    })
+    staff_trainer = crud.create_staff(db, {
+        "last_name": "Тренерова", "first_name": "Ирина", "birth_date": datetime(1995, 5, 10),
+        "gender": "Ж", "inn": "222222222222", "snils": "22222222222",
+        "hire_date": datetime(2023, 3, 15), "position_id": "pos_trainer"
+    })
+    # Добавим еще сотрудников для других ролей
+    staff_manager = crud.create_staff(db, {"last_name": "Менеджеров", "first_name": "Максим", "birth_date": datetime(1988, 7, 7), "gender": "М", "inn": "333333333333", "snils": "33333333333", "hire_date": datetime(2022, 6, 1), "position_id": "pos_manager"})
+    staff_cashier = crud.create_staff(db, {"last_name": "Кассирова", "first_name": "Елена", "birth_date": datetime(2000, 2, 20), "gender": "Ж", "inn": "444444444444", "snils": "44444444444", "hire_date": datetime(2023, 8, 1), "position_id": "pos_cashier"})
+    staff_tech = crud.create_staff(db, {"last_name": "Техников", "first_name": "Сергей", "birth_date": datetime(1992, 11, 30), "gender": "М", "inn": "555555555555", "snils": "55555555555", "hire_date": datetime(2021, 10, 5), "position_id": "pos_tech"})
+
+
+    # Создаем пользователей, ВЫЗЫВАЯ crud.create_user, которая хеширует пароли
+    # --------------------------------------------------------------------------
+    users_to_create = [
+        {"username": "admin", "password": "admin123", "role": "admin", "staff_id": staff_admin.id},
+        {"username": "trainer", "password": "trainer123", "role": "trainer", "staff_id": staff_trainer.id},
+        {"username": "manager", "password": "manager123", "role": "manager", "staff_id": staff_manager.id},
+        {"username": "cashier", "password": "cashier123", "role": "cashier", "staff_id": staff_cashier.id},
+        {"username": "tech_admin", "password": "tech123", "role": "tech_admin", "staff_id": staff_tech.id},
+        {"username": "client1", "password": "client123", "role": "client", "client_id": client1.id},
+        {"username": "client2", "password": "client456", "role": "client", "client_id": client2.id},
     ]
-    
-    # Создание сотрудников
-    staff = [
-        create_staff(db, {
-            "last_name": "Сидоров",
-            "first_name": "Алексей",
-            "birth_date": datetime(1990, 5, 15),
-            "gender": "М",
-            "inn": "123456789012",
-            "snils": "12345678901",
-            "hire_date": datetime(2020, 1, 10),
-            "position_id": "pos001"
-        }),
-        create_staff(db, {
-            "last_name": "Кузнецова",
-            "first_name": "Ольга",
-            "birth_date": datetime(1985, 8, 22),
-            "gender": "Ж",
-            "inn": "098765432109",
-            "snils": "09876543210",
-            "hire_date": datetime(2021, 3, 5),
-            "position_id": "pos002"
-        }),
-    ]
-    
-    # Создание абонементов
-    subscriptions = [
-        create_subscription(db, {
-            "client_id": clients[0].id,
-            "start_date": datetime.now() - timedelta(days=10),
-            "end_date": datetime.now() + timedelta(days=20),
-            "status_name": "active",
-            "cost": 5000.0
-        }),
-        create_subscription(db, {
-            "client_id": clients[1].id,
-            "start_date": datetime.now() - timedelta(days=5),
-            "end_date": datetime.now() + timedelta(days=25),
-            "status_name": "active",
-            "cost": 7000.0
-        }),
-    ]
-    
-    # Создание пользователей
-    users = [
-        create_user(db, {
-            "username": "admin",
-            "password": "admin123",  # В реальном приложении должно быть хешировано!
-            "role": "admin",
-            "staff_id": staff[0].id
-        }),
-        create_user(db, {
-            "username": "trainer",
-            "password": "trainer123",
-            "role": "trainer",
-            "staff_id": staff[1].id
-        }),
-        create_user(db, {
-            "username": "client1",
-            "password": "client123",
-            "role": "client",
-            "client_id": clients[0].id
-        }),
-        create_user(db, {
-            "username": "client2",
-            "password": "client456",
-            "role": "client",
-            "client_id": clients[1].id
-        }),
-    ]
-    
-    # Создание секций
-    sections = [
-        models.Section(
-            id="gym01",
-            name="Тренажерный зал",
-            status_name="active"
-        ),
-        models.Section(
-            id="pool01",
-            name="Бассейн",
-            status_name="active"
-        ),
-    ]
-    for section in sections:
-        db.add(section)
-    
-    # Создание тренировок
-    trainings = [
-        models.Training(
-            id="tr001",
-            section_id="gym01",
-            trainer_id=staff[1].id,
-            training_type="Групповая",
-            start_time=datetime.now() + timedelta(days=1, hours=10),
-            end_time=datetime.now() + timedelta(days=1, hours=11),
-            max_participants=10
-        ),
-        models.Training(
-            id="tr002",
-            section_id="pool01",
-            training_type="Индивидуальная",
-            start_time=datetime.now() + timedelta(days=2, hours=14),
-            end_time=datetime.now() + timedelta(days=2, hours=15),
-            max_participants=1
-        ),
-    ]
-    for training in trainings:
-        db.add(training)
-    
-    # Создание участников тренировок
-    participants = [
-        models.TrainingParticipant(
-            training_id="tr001",
-            client_id=clients[0].id,
-            status_name="confirmed"
-        ),
-        models.TrainingParticipant(
-            training_id="tr002",
-            client_id=clients[1].id,
-            status_name="confirmed"
-        ),
-    ]
-    for participant in participants:
-        db.add(participant)
-    
+    for user_data in users_to_create:
+        crud.create_user(db, user_data)
+
+
+    # 3. Создание связанных данных (абонементы, секции и т.д.)
+    # ------------------------------------------------------------
+    section_gym = models.Section(id="gym01", name="Тренажерный зал", status_name="active")
+    section_pool = models.Section(id="pool01", name="Бассейн", status_name="active")
+    db.add_all([section_gym, section_pool])
+
+    sub1 = crud.create_subscription(db, {
+        "client_id": client1.id, "start_date": datetime.now().date() - timedelta(days=10),
+        "end_date": datetime.now().date() + timedelta(days=20), "status_name": "active", "cost": 3000
+    })
+
+    training1 = models.Training(
+        id="tr001", section_id=section_gym.id, trainer_id=staff_trainer.id,
+        training_type="Групповая", start_time=datetime.now() + timedelta(days=2, hours=18),
+        end_time=datetime.now() + timedelta(days=2, hours=19), max_participants=10
+    )
+    db.add(training1)
+
+    # Финальный коммит для сохранения всех данных
     db.commit()
-    
-    return {"message": "Initial data created successfully"}
+
+    print("Начальные данные успешно созданы.")

@@ -2,27 +2,29 @@ import os
 from sqlalchemy import text
 from .session import engine
 
+# --- Вот эта функция, которую не может найти __init__.py ---
 def create_sql_objects():
-    """Создает триггеры, представления и индексы в базе данных"""
-    # Получаем путь к SQL-файлу
+    """Создает триггеры, представления и другие SQL-объекты, выполняя скрипт целиком."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     sql_file_path = os.path.join(current_dir, 'sql_objects.sql')
-    
-    # Читаем содержимое SQL-файла
+
+    if not os.path.exists(sql_file_path):
+        print(f"ВНИМАНИЕ: SQL-скрипт не найден по пути: {sql_file_path}")
+        return
+
     with open(sql_file_path, 'r', encoding='utf-8') as f:
         sql_script = f.read()
-    
-    # Выполняем SQL-скрипт
-    with engine.connect() as connection:
-        # Разделяем скрипт на отдельные команды
-        commands = sql_script.split(';')
-        for command in commands:
-            # Пропускаем пустые команды
-            stripped_command = command.strip()
-            if stripped_command:
-                try:
-                    connection.execute(text(stripped_command))
-                except Exception as e:
-                    print(f"Ошибка при выполнении команды: {stripped_command[:50]}...")
-                    print(f"Ошибка: {str(e)}")
-        connection.commit()
+
+    try:
+        with engine.connect() as connection:
+            # Выполняем весь скрипт как одну транзакцию.
+            # Это правильный способ для создания функций и триггеров.
+            connection.execute(text(sql_script))
+            connection.commit()
+        print("SQL-скрипт успешно выполнен.")
+    except Exception as e:
+        print("="*50)
+        print("!!! ПРОИЗОШЛА ОШИБКА ПРИ ВЫПОЛНЕНИИ SQL-СКРИПТА !!!")
+        print(f"Файл: {sql_file_path}")
+        print(f"Ошибка: {e}")
+        print("="*50)

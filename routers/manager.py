@@ -1,80 +1,66 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+# routers/manager.py
+# --- Код исправлен и соответствует новой архитектуре ---
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from database import crud, models
-from database.session import get_db
-from services.auth import get_current_user
+from database import crud, models, get_db
+from services.auth import require_role
 from datetime import datetime
-from services.utils import generate_id
 
 router = APIRouter()
+ProtectedUser = Depends(require_role("manager"))
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard", response_class=RedirectResponse)
 async def manager_dashboard(
     request: Request, 
-    user: models.User = Depends(get_current_user),
+    user: models.User = ProtectedUser,
     db: Session = Depends(get_db)
 ):
-    if user.role != "manager":
-        return RedirectResponse(url="/", status_code=303)
-    
     clients = crud.get_clients(db)
     subscriptions = crud.get_subscriptions(db)
     trainings = crud.get_upcoming_trainings(db)
     sections = crud.get_sections(db)
     
-    return request.app.templates.TemplateResponse(
-        "manager.html",
-        {
-            "request": request,
-            "clients": clients,
-            "subscriptions": subscriptions,
-            "trainings": trainings,
-            "sections": sections,
-            "current_user": user
-        }
-    )
+    context = {
+        "request": request,
+        "clients": clients,
+        "subscriptions": subscriptions,
+        "trainings": trainings,
+        "sections": sections
+    }
+    return request.app.state.templates.TemplateResponse("manager.html", context)
 
 @router.post("/add_training")
 async def add_training(
-    request: Request,
-    user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: models.User = ProtectedUser,
+    db: Session = Depends(get_db),
+    section_id: str = Form(...),
+    trainer_id: str = Form(None),
+    training_type: str = Form(...),
+    start_time: datetime = Form(...),
+    end_time: datetime = Form(...),
+    max_participants: int = Form(...)
 ):
-    if user.role != "manager":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    form_data = await request.form()
-    new_training = models.Training(
-        id=generate_id(),
-        section_id=form_data.get("section_id"),
-        trainer_id=form_data.get("trainer_id"),
-        training_type=form_data.get("training_type"),
-        start_time=datetime.strptime(form_data.get("start_time"), "%Y-%m-%dT%H:%M"),
-        end_time=datetime.strptime(form_data.get("end_time"), "%Y-%m-%dT%H:%M"),
-        max_participants=int(form_data.get("max_participants", 0))
+    training = models.Training(
+        id=crud.generate_id(), section_id=section_id, trainer_id=trainer_id,
+        training_type=training_type, start_time=start_time, end_time=end_time,
+        max_participants=max_participants
     )
-    db.add(new_training)
+    db.add(training)
     db.commit()
-    return RedirectResponse(url="/manager/dashboard", status_code=303)
+    return RedirectResponse(url="/manager/dashboard?message=Тренировка успешно добавлена", status_code=303)
 
 @router.post("/update_client_discount")
 async def update_client_discount(
-    request: Request,
-    user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: models.User = ProtectedUser,
+    db: Session = Depends(get_db),
+    client_id: str = Form(...),
+    discount: float = Form(...)
 ):
-    if user.role != "manager":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    form_data = await request.form()
-    client_id = form_data.get("client_id")
-    discount = float(form_data.get("discount", 0))
-    
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    client.discount = discount
-    db.commit()
-    return RedirectResponse(url="/manager/dashboard", status_code=303)
+    client = crud.get_client(db, client_id)
+    if client:
+        client.discount = discount
+        db.commit()
+        return RedirectResponse(url="/manager/dashboard?message=Скидка для клиента обновлена", status_code=303)
+    return RedirectResponse(url="/manager/dashboard?error=Клиент не найден", status_code=303)
