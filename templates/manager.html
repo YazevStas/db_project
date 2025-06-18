@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Панель менеджера{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Панель менеджера</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Клиенты</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6>Всего клиентов: {{ clients|length }}</h6>
+                        <button class="btn btn-sm btn-outline-success">Просмотреть всех</button>
+                    </div>
+                    <ul class="list-group">
+                        {% for client in clients[:5] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ client.last_name }} {{ client.first_name }}
+                            <span class="badge bg-primary rounded-pill">{{ client.discount }}%</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Абонементы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6>Активные: {{ subscriptions|selectattr('status_name', 'equalto', 'active')|list|length }}</h6>
+                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#addSubscriptionModal">Добавить</button>
+                    </div>
+                    <ul class="list-group">
+                        {% for sub in subscriptions[:5] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ sub.client.last_name }} - {{ sub.status_name }}
+                            <span class="badge bg-primary rounded-pill">{{ sub.cost }} руб.</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Тренировки</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6>Предстоящие: {{ trainings|length }}</h6>
+                        <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#addTrainingModal">Добавить</button>
+                    </div>
+                    <ul class="list-group">
+                        {% for training in trainings %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ training.section.name }}</strong><br>
+                                    <small>{{ training.start_time|datetimeformat('%d.%m.%Y %H:%M') }}</small>
+                                </div>
+                                <span class="badge bg-primary">{{ training.training_type }}</span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Статистика</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statsChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна для добавления данных -->
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Кассовая панель{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Кассовая панель</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Новый платеж</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/cashier/add_payment" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Абонемент</label>
+                            <select name="subscription_id" class="form-select" required>
+                                <option value="">Выберите абонемент</option>
+                                {% for sub in subscriptions %}
+                                <option value="{{ sub.id }}">{{ sub.client.last_name }} ({{ sub.cost }} руб.)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Сумма</label>
+                            <input type="number" name="amount" class="form-control" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Метод оплаты</label>
+                            <select name="method_id" class="form-select" required>
+                                <option value="cash">Наличные</option>
+                                <option value="card">Банковская карта</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Зарегистрировать платеж</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Последние платежи</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Клиент</th>
+                                <th>Сумма</th>
+                                <th>Метод</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td>{{ payment.date }}</td>
+                                <td>{{ payment.subscription.client.last_name }}</td>
+                                <td>{{ payment.amount }} руб.</td>
+                                <td>{{ payment.method.name }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Регистрация нового клиента</h5>
+            </div>
+            <div class="card-body">
+                <form action="/cashier/register_client" method="post">
+                    <!-- Поля для регистрации клиента -->
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

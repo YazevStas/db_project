@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Панель тренера{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Панель тренера</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Мои тренировки</h5>
+        </div>
+        <div class="card-body">
+            <div class="list-group">
+                {% for training in trainings %}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ training.section.name }} ({{ training.training_type }})</h5>
+                        <small>{{ training.start_time|datetimeformat('%d.%m.%Y %H:%M') }}</small>
+                    </div>
+                    <p class="mb-1">Участники: {{ participants[training.id]|length }}</p>
+                    
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" 
+                                data-bs-target="#participants{{ training.id }}">
+                            Показать участников
+                        </button>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" 
+                                data-bs-target="#markAttendanceModal{{ training.id }}">
+                            Отметить посещение
+                        </button>
+                    </div>
+                    
+                    <div class="collapse mt-2" id="participants{{ training.id }}">
+                        <ul class="list-group">
+                            {% for participant in participants[training.id] %}
+                            <li class="list-group-item">
+                                {{ participant.client.last_name }} {{ participant.client.first_name }}
+                                <span class="badge bg-info">{{ participant.status.name }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">Действия</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#addWarningModal">
+                    Выдать выговор
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна для действий тренера -->
+{% endblock %}

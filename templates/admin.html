@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Панель администратора{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Панель администратора</h2>
+    
+    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="clients-tab" data-bs-toggle="tab" data-bs-target="#clients" type="button" role="tab">Клиенты</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab">Сотрудники</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="subscriptions-tab" data-bs-toggle="tab" data-bs-target="#subscriptions" type="button" role="tab">Абонементы</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections" type="button" role="tab">Секции</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="trainings-tab" data-bs-toggle="tab" data-bs-target="#trainings" type="button" role="tab">Тренировки</button>
+        </li>
+    </ul>
+    
+    <div class="tab-content mt-3" id="adminTabsContent">
+        <!-- Вкладка клиентов -->
+        <div class="tab-pane fade show active" id="clients" role="tabpanel">
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addClientModal">
+                Добавить клиента
+            </button>
+            
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>ФИО</th>
+                        <th>Дата регистрации</th>
+                        <th>Скидка</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr>
+                        <td>{{ client.id }}</td>
+                        <td>{{ client.last_name }} {{ client.first_name }} {{ client.middle_name }}</td>
+                        <td>{{ client.reg_date }}</td>
+                        <td>{{ client.discount }}%</td>
+                        <td>
+                            <button class="btn btn-sm btn-info">Редактировать</button>
+                            <button class="btn btn-sm btn-danger">Удалить</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Вкладка сотрудников -->
+        <div class="tab-pane fade" id="staff" role="tabpanel">
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                Добавить сотрудника
+            </button>
+            
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>ФИО</th>
+                        <th>Должность</th>
+                        <th>Дата приема</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for staff_member in staff %}
+                    <tr>
+                        <td>{{ staff_member.id }}</td>
+                        <td>{{ staff_member.last_name }} {{ staff_member.first_name }} {{ staff_member.middle_name }}</td>
+                        <td>{{ staff_member.position.name if staff_member.position else 'Не указана' }}</td>
+                        <td>{{ staff_member.hire_date }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info">Редактировать</button>
+                            <button class="btn btn-sm btn-danger">Удалить</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Остальные вкладки аналогично -->
+    </div>
+</div>
+
+<!-- Модальное окно добавления клиента -->
+<div class="modal fade" id="addClientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить клиента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/add_client" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Фамилия</label>
+                        <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Имя</label>
+                        <input type="text" name="first_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Отчество</label>
+                        <input type="text" name="middle_name" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Скидка (%)</label>
+                        <input type="number" name="discount" class="form-control" value="0" min="0" max="100" step="0.1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления сотрудника -->
+<div class="modal fade" id="addStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить сотрудника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/add_staff" method="post">
+                <div class="modal-body">
+                    <!-- Поля для сотрудника -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

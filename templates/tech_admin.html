@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Управление оборудованием{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Управление оборудованием</h2>
+    
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
+        Добавить оборудование
+    </button>
+    
+    <div class="row">
+        {% for eq in equipment %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">{{ eq.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><strong>Модель:</strong> {{ eq.model }}</p>
+                    <p class="card-text"><strong>Секция:</strong> {{ eq.section.name }}</p>
+                    <p class="card-text"><strong>Дата закупки:</strong> {{ eq.purchase_date }}</p>
+                    <p class="card-text"><strong>Гарантия:</strong> {{ eq.warranty_months }} месяцев</p>
+                    <p class="card-text"><strong>Количество:</strong> {{ eq.quantity }}</p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
+                            data-bs-target="#editEquipmentModal{{ eq.id }}">Редактировать</button>
+                    <button class="btn btn-sm btn-danger">Списать</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно редактирования -->
+        <div class="modal fade" id="editEquipmentModal{{ eq.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Редактировать оборудование</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="/tech_admin/update_equipment/{{ eq.id }}" method="post">
+                        <div class="modal-body">
+                            <!-- Поля для редактирования -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Модальное окно добавления оборудования -->
+<div class="modal fade" id="addEquipmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить оборудование</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/tech_admin/add_equipment" method="post">
+                <div class="modal-body">
+                    <!-- Поля для оборудования -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
