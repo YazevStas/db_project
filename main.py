@@ -1,74 +1,96 @@
-# main.py
+# main.py (Финальная версия с lifespan)
 
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.status import HTTP_303_SEE_OTHER
 
-from database import get_db, models
-from routers import admin, tech_admin, manager, cashier, trainer, client
-from services.auth import authenticate_user, create_access_token, get_current_user_from_cookie
+# Импортируем все необходимое из нашего проекта
+from database import (
+    engine, Base, get_db, initialize_database, create_sql_objects,
+    crud, models, SessionLocal  # <--- ДОБАВЛЕН ИМПОРТ SessionLocal
+)
+from services.auth import (
+    authenticate_user, create_access_token, get_current_user_from_cookie
+)
+from routers import (
+    admin_router, tech_admin_router, manager_router, 
+    cashier_router, trainer_router, client_router
+)
 
-# --- Инициализация приложения FastAPI ---
+# --- Использование Lifespan для инициализации при старте ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Код, который выполняется ДО запуска приложения (аналог startup)
+    print("Приложение запускается... Проверка состояния базы данных.")
+    
+    # Создаем все таблицы, определенные в models.py (если их еще нет)
+    print("Создание таблиц...")
+    Base.metadata.create_all(bind=engine)
+    print("Таблицы созданы.")
+    
+    # Создаем SQL-объекты (представления, триггеры) из файла sql_objects.sql
+    print("Создание представлений и триггеров...")
+    create_sql_objects()
+    print("SQL-объекты созданы.")
+    
+    # Используем 'with' для автоматического получения и закрытия сессии
+    with SessionLocal() as db:
+        # Проверяем, есть ли в базе уже пользователи.
+        if not db.query(models.User).first():
+            print("База данных пуста. Заполняем начальными данными...")
+            initialize_database(db)
+            print("Начальные данные успешно добавлены.")
+        else:
+            print("База данных уже содержит данные. Инициализация пропущена.")
+    
+    print("Приложение готово к работе.")
+    yield
+    # Код, который выполняется ПОСЛЕ остановки приложения (аналог shutdown)
+    print("Приложение останавливается...")
+
+# --- Инициализация приложения FastAPI с указанием lifespan ---
 app = FastAPI(
+    lifespan=lifespan, # <--- ВОТ ТАК ПОДКЛЮЧАЕТСЯ LIFESPAN
     title="Спортивный клуб",
     description="Проект по базам данных (Сатаров В.Е., Детина С.И., Язев С.В.)"
 )
 
-# --- Middleware для добавления пользователя в контекст каждого запроса ---
-# Это позволяет нам не передавать current_user в каждый шаблон вручную.
-# Шаблоны смогут получить доступ к нему через `request.state.current_user`.
-class AddUserToTemplateMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Используем нашу функцию для безопасного получения пользователя из cookie
-        user = await get_current_user_from_cookie(request, next(get_db()))
-        request.state.current_user = user
-        response = await call_next(request)
-        return response
-
-app.add_middleware(AddUserToTemplateMiddleware)
-
 # --- Подключение роутеров для разных ролей ---
-# Теги используются для группировки эндпоинтов в документации /docs
-app.include_router(admin.router, prefix="/admin", tags=["Admin"])
-app.include_router(tech_admin.router, prefix="/tech_admin", tags=["Tech Admin"])
-app.include_router(manager.router, prefix="/manager", tags=["Manager"])
-app.include_router(cashier.router, prefix="/cashier", tags=["Cashier"])
-app.include_router(trainer.router, prefix="/trainer", tags=["Trainer"])
-app.include_router(client.router, prefix="/client", tags=["Client"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(tech_admin_router, prefix="/tech_admin", tags=["Tech Admin"])
+app.include_router(manager_router, prefix="/manager", tags=["Manager"])
+app.include_router(cashier_router, prefix="/cashier", tags=["Cashier"])
+app.include_router(trainer_router, prefix="/trainer", tags=["Trainer"])
+app.include_router(client_router, prefix="/client", tags=["Client"])
 
-# --- Настройка статических файлов (CSS, JS, изображения) ---
+# --- Настройка статических файлов и шаблонов ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# --- Настройка шаблонизатора Jinja2 ---
 templates = Jinja2Templates(directory="templates")
 
-# Добавляем кастомный фильтр 'datetimeformat', который используется в шаблонах
-def datetime_format(value, format='%d.%m.%Y %H:%M'):
-    if not isinstance(value, datetime):
-        return value
-    return value.strftime(format)
-templates.env.filters['datetimeformat'] = datetime_format
-
-# Помещаем шаблоны в "состояние" приложения, чтобы роутеры могли получить к ним доступ
+def datetime_format_filter(value, format='%d.%m.%Y %H:%M'):
+    if isinstance(value, datetime):
+        return value.strftime(format)
+    return value
+templates.env.filters['datetimeformat'] = datetime_format_filter
 app.state.templates = templates
+
 
 # --- Основные эндпоинты (Логин, Логаут, Главная страница) ---
 
 @app.get("/", response_class=HTMLResponse)
-async def login_page(request: Request):
-    # Если пользователь уже залогинен, перенаправляем его на дашборд
-    if request.state.current_user:
-        role = request.state.current_user.role
-        return RedirectResponse(url=f"/{role}/dashboard", status_code=HTTP_303_SEE_OTHER)
+async def login_page(
+    request: Request, 
+    user: models.User = Depends(get_current_user_from_cookie)
+):
+    if user:
+        return RedirectResponse(url=f"/{user.role}/dashboard")
     
-    # Иначе показываем страницу входа
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request, "current_user": user})
 
 @app.post("/login", response_class=RedirectResponse)
 async def login_for_access_token(
@@ -76,71 +98,22 @@ async def login_for_access_token(
     username: str = Form(...),
     password: str = Form(...)
 ):
-    # Аутентификация пользователя с проверкой хеша пароля
     user = authenticate_user(db, username, password)
-    
     if not user:
-        # Если аутентификация не удалась, возвращаем на страницу входа с ошибкой
-        error_message = "Неверное имя пользователя или пароль"
-        return RedirectResponse(url=f"/?error={error_message}", status_code=HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/?error=Неверное имя пользователя или пароль", status_code=303)
 
-    # Создание токена доступа
     access_token = create_access_token(data={"sub": user.username})
-    
-    # Перенаправление на дашборд соответствующей роли
-    response = RedirectResponse(url=f"/{user.role}/dashboard", status_code=HTTP_303_SEE_OTHER)
-    
-    # Установка токена в безопасный HTTPOnly cookie
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    response = RedirectResponse(url=f"/{user.role}/dashboard", status_code=303)
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
     return response
 
 @app.get("/logout", response_class=RedirectResponse)
 async def logout():
-    # Перенаправляем на главную страницу и удаляем cookie
-    response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url="/", status_code=303)
     response.delete_cookie("access_token")
     return response
 
-# --- Обработчик ошибок 404 ---
-@app.exception_handler(404)
-async def not_found_exception_handler(request: Request, exc):
-    # Показываем кастомную страницу 404, если она есть
-    if os.path.exists("templates/404.html"):
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
-    return HTMLResponse(content="<h1>404 Not Found</h1>", status_code=404)
-
-# --- Логика, выполняемая при запуске приложения ---
-@app.on_event("startup")
-def on_startup():
-    from database.session import engine, SessionLocal
-    from database import create_sql_objects, initial_data
-    
-    print("Приложение запускается... Проверка состояния базы данных.")
-    
-    # Создаем все таблицы, определенные в models.py (если их еще нет)
-    models.Base.metadata.create_all(bind=engine)
-    
-    # Создаем SQL-объекты (представления, триггеры) из файла sql_objects.sql
-    # Для PostgreSQL это безопасно.
-    print("Создание представлений и триггеров...")
-    create_sql_objects()
-    
-    db = SessionLocal()
-    try:
-        # Проверяем, есть ли в базе уже пользователи.
-        # Если нет, значит, база пуста и ее нужно заполнить начальными данными.
-        if not db.query(models.User).first():
-            print("База данных пуста. Заполняем начальными данными...")
-            initial_data.initialize_database(db)
-            print("Начальные данные успешно добавлены.")
-        else:
-            print("База данных уже содержит данные. Инициализация пропущена.")
-    finally:
-        db.close()
-
-# --- Точка входа для запуска сервера через `python main.py` ---
+# --- Точка входа для запуска сервера ---
 if __name__ == "__main__":
     import uvicorn
-    # Рекомендуется запускать через терминал: uvicorn main:app --reload
-    # Такой запуск полезен для простой отладки
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

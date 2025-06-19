@@ -20,15 +20,18 @@ FOR EACH ROW EXECUTE FUNCTION validate_staff_age();
 CREATE OR REPLACE FUNCTION update_subscription_status()
 RETURNS TRIGGER AS $$
 BEGIN
+    -- Не меняем статус, если он принудительно заблокирован
+    IF OLD.status_name = 'blocked' AND NEW.status_name != 'blocked' THEN
+        NEW.status_name := 'blocked';
+        RETURN NEW;
+    END IF;
+
     IF NEW.end_date < CURRENT_DATE THEN
         NEW.status_name := 'expired';
     ELSIF NEW.start_date > CURRENT_DATE THEN
         NEW.status_name := 'pending';
     ELSE
-        -- Оставляем статус, который пришел, если он не 'blocked'
-        IF NEW.status_name != 'blocked' THEN
-            NEW.status_name := 'active';
-        END IF;
+        NEW.status_name := 'active';
     END IF;
     RETURN NEW;
 END;
@@ -48,11 +51,14 @@ DECLARE
     max_allowed INT;
     current_count INT;
 BEGIN
-    SELECT max_participants INTO max_allowed FROM trainings WHERE id = NEW.training_id;
-    SELECT COUNT(*) INTO current_count FROM training_participants WHERE training_id = NEW.training_id AND status_name = 'confirmed';
+    -- Проверяем только при добавлении подтвержденного участника
+    IF NEW.status_name = 'confirmed' THEN
+        SELECT max_participants INTO max_allowed FROM trainings WHERE id = NEW.training_id;
+        SELECT COUNT(*) INTO current_count FROM training_participants WHERE training_id = NEW.training_id AND status_name = 'confirmed';
 
-    IF current_count >= max_allowed THEN
-        RAISE EXCEPTION 'Достигнут лимит участников для тренировки %', NEW.training_id;
+        IF current_count >= max_allowed THEN
+            RAISE EXCEPTION 'Достигнут лимит участников для тренировки %', NEW.training_id;
+        END IF;
     END IF;
     RETURN NEW;
 END;
@@ -71,18 +77,35 @@ FOR EACH ROW EXECUTE FUNCTION check_max_participants();
 DROP VIEW IF EXISTS client_full_info_view;
 CREATE VIEW client_full_info_view AS
 SELECT 
-    c.id AS client_id,
+    c.id,
     c.last_name,
     c.first_name,
     c.middle_name,
     c.reg_date,
     c.discount,
+    sub.id as subscription_id,
     sub.status_name AS subscription_status,
     sub.start_date,
     sub.end_date,
     (SELECT COUNT(*) FROM warnings w WHERE w.client_id = c.id) AS warnings_count
 FROM clients c
-LEFT JOIN subscriptions sub ON c.id = sub.client_id;
+LEFT JOIN subscriptions sub ON c.id = sub.client_id
+WHERE sub.status_name = 'active' OR sub.id IS NULL;
+
+-- !!! ДОБАВЛЕНО: Детальная информация по сотрудникам (не хватало для admin.py) !!!
+DROP VIEW IF EXISTS staff_details_view;
+CREATE VIEW staff_details_view AS
+SELECT
+    s.id,
+    s.last_name,
+    s.first_name,
+    s.middle_name,
+    s.hire_date,
+    p.name AS position_name,
+    p.min_salary,
+    p.max_salary
+FROM staff s
+LEFT JOIN positions p ON s.position_id = p.id;
 
 -- Остальные представления из вашего оригинального файла в большинстве случаев будут работать,
 -- но для надежности лучше всегда проверять синтаксис на PostgreSQL.

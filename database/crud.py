@@ -1,10 +1,7 @@
 from sqlalchemy.orm import Session
 from . import models
-import uuid
-
-# Генерация уникального ID
-def generate_id():
-    return str(uuid.uuid4())[:12]
+from services.utils import generate_id
+from services.auth import get_password_hash
 
 # CRUD операции для клиентов
 def get_clients(db: Session, skip: int = 0, limit: int = 100):
@@ -84,10 +81,11 @@ def get_user_by_username(db: Session, username: str):
 
 def create_user(db: Session, user_data: dict):
     user_id = generate_id()
+    hashed_password = get_password_hash(user_data["password"])
     user = models.User(
         id=user_id,
         username=user_data["username"],
-        password=user_data["password"],  # В реальном приложении должно быть хешировано
+        password=hashed_password,  # В реальном приложении должно быть хешировано
         role=user_data["role"],
         client_id=user_data.get("client_id"),
         staff_id=user_data.get("staff_id")

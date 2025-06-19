@@ -3,10 +3,10 @@
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from database import crud, models, get_db
-from services.auth import require_role, get_password_hash
+from services.auth import require_role
 from services.utils import generate_id
 from datetime import datetime
 
@@ -30,7 +30,7 @@ async def admin_dashboard(
         print(f"Ошибка при запросе к представлению, используем fallback: {e}")
         # Fallback на случай, если представления не работают (например, в SQLite)
         clients_view = crud.get_clients(db)
-        staff_view = crud.get_staff(db)
+        staff_view = db.query(models.Staff).options(joinedload(models.Staff.position)).all()
     
     positions = db.query(models.Position).all()
     subscriptions = crud.get_subscriptions(db)
