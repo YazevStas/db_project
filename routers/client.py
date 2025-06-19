@@ -1,84 +1,149 @@
-# routers/client.py
-# --- Упрощена логика, используются правильные зависимости ---
+# routers/client.py (ФИНАЛЬНАЯ ВЕРСИЯ)
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+from typing import Optional
+
 from database import crud, models, get_db
 from services.auth import require_role
-from datetime import datetime
 
 router = APIRouter()
-ProtectedUser = Depends(require_role("client"))
 
-@router.get("/dashboard", response_class=RedirectResponse)
+@router.get("/dashboard", response_class=HTMLResponse)
 async def client_dashboard(
-    request: Request, 
-    user: models.User = ProtectedUser,
+    request: Request,
+    user: models.User = Depends(require_role("client")),
     db: Session = Depends(get_db)
 ):
-    client = crud.get_client(db, user.client_id)
-    subscriptions = crud.get_client_subscriptions(db, user.client_id)
-    attendances = crud.get_client_attendances(db, user.client_id)
+    # 1. Загружаем клиента и все его связанные данные одним запросом
+    client = db.query(models.Client).options(
+        joinedload(models.Client.contacts),
+        joinedload(models.Client.subscriptions).joinedload(models.ClientSubscription.subscription_type),
+        joinedload(models.Client.participants).joinedload(models.TrainingParticipant.training).joinedload(models.Training.section)
+    ).filter_by(id=user.client_id).first()
+
+    if not client:
+        return RedirectResponse(url="/?error=Не удалось найти данные клиента.", status_code=303)
+
+    # 2. Логика определения доступных тренировок
+    active_subscription_type_ids = {
+        sub.subscription_type_id 
+        for sub in client.subscriptions 
+        if sub.status_name == 'active' and sub.end_date >= datetime.now().date()
+    }
     
-    # Все доступные тренировки для записи
-    available_trainings = db.query(models.Training).filter(
-        models.Training.start_time > datetime.now()
-    ).all()
+    my_training_ids = {p.training_id for p in client.participants}
     
+    available_trainings = []
+    if active_subscription_type_ids:
+        # --- ИСПРАВЛЕННАЯ ЛОГИКА ЗАПРОСА ---
+        # Начинаем строить базовый запрос
+        query = db.query(models.Training).join(
+            models.training_subscription_access
+        ).filter(
+            models.training_subscription_access.c.subscription_type_id.in_(active_subscription_type_ids),
+            models.Training.start_time > datetime.now()
+        )
+
+        # Если у клиента уже есть записи, добавляем условие для их исключения
+        if my_training_ids:
+            query = query.filter(~models.Training.id.in_(my_training_ids))
+        
+        # Выполняем запрос
+        available_trainings = query.distinct().order_by(models.Training.start_time).all()
+
+    # 3. Формирование контекста для шаблона
     context = {
         "request": request,
+        "current_user": user,
         "client": client,
-        "subscriptions": subscriptions,
-        "attendances": attendances,
+        "subscriptions": client.subscriptions,
+        "my_trainings": sorted([p.training for p in client.participants if p.training], key=lambda t: t.start_time),
         "available_trainings": available_trainings
     }
     return request.app.state.templates.TemplateResponse("client.html", context)
 
-@router.post("/update_profile")
-async def update_profile(
-    user: models.User = ProtectedUser,
-    db: Session = Depends(get_db),
-    last_name: str = Form(...),
-    first_name: str = Form(...),
-    middle_name: str = Form(None)
-    # Контакты можно добавить как отдельные поля, если нужно
-):
-    client = crud.get_client(db, user.client_id)
-    if client:
-        client.last_name = last_name
-        client.first_name = first_name
-        client.middle_name = middle_name
-        db.commit()
-        return RedirectResponse(url="/client/dashboard?message=Профиль успешно обновлен", status_code=303)
-    return RedirectResponse(url="/client/dashboard?error=Клиент не найден", status_code=303)
 
 @router.post("/book_training")
 async def book_training(
-    user: models.User = ProtectedUser,
+    user: models.User = Depends(require_role("client")),
     db: Session = Depends(get_db),
     training_id: str = Form(...)
 ):
-    # Проверка, не записан ли уже клиент
-    existing_booking = db.query(models.TrainingParticipant).filter_by(
-        training_id=training_id, client_id=user.client_id
+    # Проверка, имеет ли клиент право на запись
+    active_sub_types = db.query(models.ClientSubscription.subscription_type_id).filter(
+        models.ClientSubscription.client_id == user.client_id,
+        models.ClientSubscription.status_name == 'active',
+        models.ClientSubscription.end_date >= datetime.now().date()
+    ).subquery()
+    
+    has_access = db.query(models.Training).join(
+        models.training_subscription_access
+    ).filter(
+        models.Training.id == training_id,
+        models.training_subscription_access.c.subscription_type_id.in_(active_sub_types)
     ).first()
-    
-    if existing_booking:
-        return RedirectResponse(url="/client/dashboard?error=Вы уже записаны на эту тренировку", status_code=303)
-    
-    # Проверка лимита участников (триггер в БД должен это делать, но дублируем для UX)
-    training = db.query(models.Training).get(training_id)
-    current_participants = db.query(models.TrainingParticipant).filter_by(training_id=training_id).count()
 
-    if current_participants >= training.max_participants:
-         return RedirectResponse(url="/client/dashboard?error=На тренировку нет мест", status_code=303)
+    if not has_access:
+        return RedirectResponse(url="/client/dashboard?error=У вас нет доступа к этой тренировке.", status_code=303)
 
-    new_booking = models.TrainingParticipant(
-        training_id=training_id,
-        client_id=user.client_id,
-        status_name="confirmed"
-    )
-    db.add(new_booking)
+    try:
+        new_booking = models.TrainingParticipant(
+            training_id=training_id, client_id=user.client_id, status_name="confirmed"
+        )
+        db.add(new_booking)
+        db.commit()
+        return RedirectResponse(url="/client/dashboard?message=Вы успешно записаны на тренировку!", status_code=303)
+    except IntegrityError:
+        db.rollback()
+        return RedirectResponse(url="/client/dashboard?error=Вы уже записаны на эту тренировку.", status_code=303)
+
+
+# Эндпоинт для обновления профиля остается без изменений
+@router.post("/update_profile")
+async def update_profile(
+    user: models.User = Depends(require_role("client")),
+    db: Session = Depends(get_db),
+    last_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(None),
+    phone: str = Form(None),
+    email: str = Form(None)
+):
+    # ... (весь код валидации и обновления, который мы уже писали)
+    if phone:
+        cleaned_phone = "".join(filter(lambda char: char.isdigit() or char == '+', phone))
+        if cleaned_phone.startswith('+'):
+            if len(cleaned_phone) != 12 or not cleaned_phone[1:].isdigit():
+                return RedirectResponse(url="/client/dashboard?error=Неверный формат телефона: +7 и 11 цифр.", status_code=303)
+        else:
+            if len(cleaned_phone) != 11 or not cleaned_phone.isdigit():
+                return RedirectResponse(url="/client/dashboard?error=Неверный формат телефона: 11 цифр.", status_code=303)
+        phone_to_save = cleaned_phone
+    else:
+        phone_to_save = None
+    
+    client = crud.get_client(db, user.client_id)
+    client.last_name = last_name
+    client.first_name = first_name
+    client.middle_name = middle_name
+    
+    contact_details = {"phone": phone_to_save, "email": email}
+    for c_type, c_value in contact_details.items():
+        if c_value:
+            contact = db.query(models.ClientContact).filter_by(client_id=user.client_id, contact_type=c_type).first()
+            if contact:
+                contact.contact_value = c_value
+            else:
+                contact = models.ClientContact(client_id=user.client_id, contact_type=c_type, contact_value=c_value)
+                db.add(contact)
+        else:
+            contact = db.query(models.ClientContact).filter_by(client_id=user.client_id, contact_type=c_type).first()
+            if contact:
+                db.delete(contact)
+
     db.commit()
-    return RedirectResponse(url="/client/dashboard?message=Вы успешно записаны на тренировку", status_code=303)
+    return RedirectResponse(url="/client/dashboard?message=Профиль успешно обновлен", status_code=303)

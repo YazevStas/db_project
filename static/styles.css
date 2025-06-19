@@ -5,7 +5,8 @@ body {
     padding-bottom: 60px;
 }
 
-.container {
+/* Применяем стили только к главному контейнеру страницы, а не к тому, что в navbar */
+body > .container {
     background-color: white;
     padding: 25px;
     border-radius: 10px;
@@ -88,4 +89,21 @@ footer {
     .card {
         margin-bottom: 15px;
     }
+}
+/* Делаем текст выпадающего меню видимым на синем фоне */
+.navbar .nav-item.dropdown .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important; /* Белый цвет с легкой прозрачностью */
+    font-weight: 500;
+}
+
+/* При наведении делаем текст ярче */
+.navbar .nav-item.dropdown .nav-link:hover {
+    color: #ffffff !important; /* Ярко-белый цвет */
+}
+
+/* Убираем белое "пятно" (это фон контейнера) */
+.navbar .container {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
 }
