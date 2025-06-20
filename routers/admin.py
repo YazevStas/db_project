@@ -18,25 +18,57 @@ async def admin_dashboard(
     user: models.User = Depends(require_role("admin")),
     db: Session = Depends(get_db)
 ):
+    # --- 1. ЗАГРУЗКА ДАННЫХ ---
+    # Загружаем все данные, которые нам понадобятся на странице
     all_clients = db.query(models.Client).options(joinedload(models.Client.contacts)).order_by(models.Client.last_name).all()
     all_staff = db.query(models.Staff).options(joinedload(models.Staff.position)).order_by(models.Staff.last_name).all()
     all_client_subscriptions = db.query(models.ClientSubscription).options(joinedload(models.ClientSubscription.client), joinedload(models.ClientSubscription.subscription_type), joinedload(models.ClientSubscription.status)).all()
     all_sections = db.query(models.Section).order_by(models.Section.name).all()
-    all_trainings = db.query(models.Training).options(joinedload(models.Training.section), joinedload(models.Training.trainer), joinedload(models.Training.allowed_subscriptions), joinedload(models.Training.participants).joinedload(models.TrainingParticipant.client)).order_by(models.Training.start_time.desc()).all()
     
+    # Загружаем тренировки и все связанные с ними данные одним запросом
+    all_trainings = db.query(models.Training).options(
+        joinedload(models.Training.section), 
+        joinedload(models.Training.trainer), 
+        joinedload(models.Training.allowed_subscriptions), 
+        joinedload(models.Training.participants).joinedload(models.TrainingParticipant.client)
+    ).order_by(models.Training.start_time.desc()).all()
+    
+    # --- 2. ОТЛАДОЧНЫЙ ВЫВОД В КОНСОЛЬ ---
+    # Этот блок поможет нам понять, правильно ли сохраняются связи
+    print("\n--- ОТЛАДКА ТРЕНИРОВОК В АДМИНКЕ ---")
+    for t in all_trainings:
+        allowed_subs_names = [s.name for s in t.allowed_subscriptions]
+        trainer_name = f"{t.trainer.first_name} {t.trainer.last_name}" if t.trainer else "НЕТ"
+        print(f"Тренировка '{t.name}' (ID: {t.id}), Тренер: {trainer_name} (ID: {t.trainer_id}), Доступ для: {allowed_subs_names}")
+    print("--- КОНЕЦ ОТЛАДКИ ---\n")
+
+    # --- 3. ДАННЫЕ ДЛЯ ФОРМ В МОДАЛЬНЫХ ОКНАХ ---
     all_subscription_types = db.query(models.SubscriptionType).order_by(models.SubscriptionType.name).all()
     all_trainers = db.query(models.Staff).join(models.Position).filter(models.Position.name == 'Тренер').all()
-    all_clients_for_form = crud.get_clients(db)
     all_positions = db.query(models.Position).all()
-
+    all_statuses = db.query(models.Status).all()
+    
+    # --- 4. ФОРМИРОВАНИЕ КОНТЕКСТА ДЛЯ ШАБЛОНА ---
     context = {
-        "request": request, "current_user": user, "clients": all_clients, "staff": all_staff,
-        "client_subscriptions": all_client_subscriptions, "sections": all_sections, "trainings": all_trainings,
-        "all_clients": all_clients_for_form, "all_subscription_types": all_subscription_types,
-        "all_sections": all_sections, "trainers": all_trainers, "positions": all_positions,
+        "request": request,
+        "current_user": user,
+        
+        # Переменные для отображения в таблицах
+        "clients": all_clients,
+        "staff": all_staff,
+        "client_subscriptions": all_client_subscriptions,
+        "sections": all_sections,
+        "trainings": all_trainings,
+        
+        # Переменные для выпадающих списков в формах
+        "all_clients": all_clients, 
+        "all_subscription_types": all_subscription_types,
+        "all_sections": all_sections,
+        "trainers": all_trainers,
+        "all_statuses": all_statuses,
+        "positions": all_positions,
     }
     return request.app.state.templates.TemplateResponse("admin.html", context)
-
 # --- УПРАВЛЕНИЕ КЛИЕНТАМИ ---
 
 @router.post("/add_client")
@@ -72,56 +104,87 @@ async def delete_client(
 async def add_staff(
     db: Session = Depends(get_db),
     user: models.User = Depends(require_role("admin")),
-    last_name: str = Form(...), first_name: str = Form(...), middle_name: str = Form(None),
-    birth_date: str = Form(...), gender: str = Form(...), inn: str = Form(...),
-    snils: str = Form(...), hire_date: str = Form(...), position_id: str = Form(...),
-    phone: str = Form(None), salary: float = Form(None), education: str = Form(None),
-    address: str = Form(None), passport_series: str = Form(None), passport_number: str = Form(None)
+    # Все поля из формы
+    last_name: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: Optional[str] = Form(None),
+    birth_date: str = Form(...),
+    gender: str = Form(...),
+    inn: str = Form(...),
+    snils: str = Form(...),
+    hire_date: str = Form(...),
+    position_id: str = Form(...),
+    phone: Optional[str] = Form(None),
+    salary: Optional[float] = Form(None),
+    education: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    passport_series: Optional[str] = Form(None),
+    passport_number: Optional[str] = Form(None)
 ):
+    # --- БЛОК ПРЕДВАРИТЕЛЬНОЙ ВАЛИДАЦИИ ---
+
+    # 1. Проверка обязательных полей
+    if not position_id:
+        return RedirectResponse(url="/admin/dashboard?error=Необходимо выбрать должность.", status_code=303)
+
+    # 2. Валидация ИНН (строго 12 цифр)
+    if not (inn and inn.isdigit() and len(inn) == 12):
+        return RedirectResponse(url="/admin/dashboard?error=ИНН должен состоять ровно из 12 цифр.", status_code=303)
+        
+    # 3. Валидация СНИЛС (строго 11 цифр)
+    if not (snils and snils.isdigit() and len(snils) == 11):
+        return RedirectResponse(url="/admin/dashboard?error=СНИЛС должен состоять ровно из 11 цифр.", status_code=303)
+
+    # 4. Валидация паспорта (если поля заполнены)
+    if passport_series and not (passport_series.isdigit() and len(passport_series) == 4):
+        return RedirectResponse(url="/admin/dashboard?error=Серия паспорта должна состоять ровно из 4 цифр.", status_code=303)
+    if passport_number and not (passport_number.isdigit() and len(passport_number) == 6):
+        return RedirectResponse(url="/admin/dashboard?error=Номер паспорта должен состоять ровно из 6 цифр.", status_code=303)
+
+    # 5. Валидация дат
+    try:
+        birth_date_obj = datetime.strptime(birth_date, '%Y-%m-%d').date()
+        hire_date_obj = datetime.strptime(hire_date, '%Y-%m-%d').date()
+    except ValueError:
+        return RedirectResponse(url="/admin/dashboard?error=Неверный формат даты. Используйте ГГГГ-ММ-ДД.", status_code=303)
+
+    # Проверка, что дата приема не в будущем
+    if hire_date_obj > datetime.now().date():
+        return RedirectResponse(url="/admin/dashboard?error=Дата приема на работу не может быть в будущем.", status_code=303)
+    
+    # Проверка возраста (18 лет)
+    # Используем `relativedelta` для точного расчета
+    from dateutil.relativedelta import relativedelta
+    age = relativedelta(datetime.now().date(), birth_date_obj).years
+    if age < 18:
+        return RedirectResponse(url="/admin/dashboard?error=Сотруднику должно быть не менее 18 лет.", status_code=303)
+
+
+    # --- КОНЕЦ БЛОКА ВАЛИДАЦИИ ---
+
     staff_data = {
         "last_name": last_name, "first_name": first_name, "middle_name": middle_name,
-        "birth_date": datetime.strptime(birth_date, '%Y-%m-%d').date(), 
+        "birth_date": birth_date_obj, 
         "gender": gender, "inn": inn, "snils": snils,
-        "hire_date": datetime.strptime(hire_date, '%Y-%m-%d').date(), 
+        "hire_date": hire_date_obj, 
         "position_id": position_id, "phone": phone, "salary": salary, "education": education,
         "address": address, "passport_series": passport_series, "passport_number": passport_number
     }
+    
     try:
         crud.create_staff(db, staff_data)
         return RedirectResponse(url="/admin/dashboard?message=Сотрудник успешно добавлен", status_code=303)
-    except (IntegrityError, DataError, InternalError) as e:
+    except (IntegrityError, DataError) as e:
+        # Этот блок теперь будет ловить в основном только ошибки уникальности (дубликаты)
         db.rollback()
         error_message = "Произошла ошибка при добавлении."
         original_error = getattr(e, 'orig', None)
-
-        if original_error:
-            error_str = str(original_error).lower()
-            if "validate_staff_age" in error_str or "старше 18 лет" in error_str:
-                error_message = "Ошибка: Сотруднику должно быть не менее 18 лет."
-            elif "duplicate key value" in error_str:
-                if "inn" in error_str:
-                    error_message = "Ошибка: Сотрудник с таким ИНН уже существует."
-                elif "snils" in error_str:
-                    error_message = "Ошибка: Сотрудник с таким СНИЛС уже существует."
-                else:
-                    error_message = "Ошибка: Запись с такими уникальными данными уже существует."
-            elif "value too long for type character varying" in error_str:
-                # Более точная проверка для полей паспорта
-                if "character varying(4)" in error_str:
-                    error_message = "Ошибка: Серия паспорта не должна превышать 4 символа."
-                elif "character varying(6)" in error_str:
-                    error_message = "Ошибка: Номер паспорта не должен превышать 6 символов."
-                elif "character varying(11)" in error_str:
-                    error_message = "Ошибка: СНИЛС не должен превышать 11 символов."
-                elif "character varying(12)" in error_str:
-                    error_message = "Ошибка: ИНН не должен превышать 12 символов."
-                else:
-                    error_message = "Ошибка: Одно из текстовых полей слишком длинное."
-            else:
-                error_message = "Ошибка базы данных. Проверьте корректность введенных данных."
-        
+        if original_error and "duplicate key value" in str(original_error).lower():
+            if "inn" in str(original_error).lower():
+                error_message = "Ошибка: Сотрудник с таким ИНН уже существует."
+            elif "snils" in str(original_error).lower():
+                error_message = "Ошибка: Сотрудник с таким СНИЛС уже существует."
         return RedirectResponse(url=f"/admin/dashboard?error={error_message}", status_code=303)
-
 
 @router.post("/staff/{staff_id}/delete")
 async def delete_staff(

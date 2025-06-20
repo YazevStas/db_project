@@ -4,62 +4,56 @@
 
 {% block content %}
 <div class="container">
-    <h2 class="mb-4">Панель тренера</h2>
-    
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Мои тренировки</h5>
-        </div>
-        <div class="card-body">
-            <div class="list-group">
-                {% for training in trainings %}
-                <div class="list-group-item">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h5 class="mb-1">{{ training.section.name }} ({{ training.training_type }})</h5>
-                        <small>{{ training.start_time|datetimeformat('%d.%m.%Y %H:%M') }}</small>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Мое расписание</h2>
+        <span class="badge bg-primary fs-6">Тренер: {{ current_user.staff.first_name }} {{ current_user.staff.last_name }}</span>
+    </div>
+
+    {% if trainings %}
+        <div class="row">
+            {% for training in trainings %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header {% if training.is_group %}bg-primary{% else %}bg-info{% endif %} text-white">
+                        <h5 class="card-title mb-0">{{ training.name }}</h5>
+                        <small>{{ training.section.name }}</small>
                     </div>
-                    <p class="mb-1">Участники: {{ participants[training.id]|length }}</p>
-                    
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" 
-                                data-bs-target="#participants{{ training.id }}">
-                            Показать участников
-                        </button>
-                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" 
-                                data-bs-target="#markAttendanceModal{{ training.id }}">
-                            Отметить посещение
-                        </button>
-                    </div>
-                    
-                    <div class="collapse mt-2" id="participants{{ training.id }}">
-                        <ul class="list-group">
-                            {% for participant in participants[training.id] %}
-                            <li class="list-group-item">
-                                {{ participant.client.last_name }} {{ participant.client.first_name }}
-                                <span class="badge bg-info">{{ participant.status.name }}</span>
-                            </li>
+                    <div class="card-body">
+                        <p>
+                            <strong><i class="bi bi-calendar-event me-2"></i>Дата:</strong> {{ training.start_time.strftime('%d.%m.%Y') }}
+                        </p>
+                        <p>
+                            <strong><i class="bi bi-clock-fill me-2"></i>Время:</strong> {{ training.start_time.strftime('%H:%M') }} - {{ training.end_time.strftime('%H:%M') }}
+                        </p>
+                        <p>
+                            <strong><i class="bi bi-tag-fill me-2"></i>Тип:</strong>
+                            {% if training.is_group %}
+                                <span class="badge bg-primary">Групповая</span>
+                            {% else %}
+                                <span class="badge bg-info">Индивидуальная</span>
+                            {% endif %}
+                        </p>
+                        <hr>
+                        <h6><i class="bi bi-people-fill me-2"></i>Участники ({{ training.participants|length }} / {{ training.max_participants }})</h6>
+                        {% if training.participants %}
+                            <ul class="list-group list-group-flush">
+                            {% for p in training.participants %}
+                                <li class="list-group-item">{{ p.client.first_name }} {{ p.client.last_name }}</li>
                             {% endfor %}
-                        </ul>
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">На эту тренировку пока никто не записан.</p>
+                        {% endif %}
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% endfor %}
         </div>
-    </div>
-    
-    <div class="card">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">Действия</h5>
+    {% else %}
+        <div class="alert alert-success text-center">
+            <h4 class="alert-heading">У вас нет назначенных тренировок</h4>
+            <p class="mb-0">Можно отдохнуть!</p>
         </div>
-        <div class="card-body">
-            <div class="d-grid gap-2">
-                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#addWarningModal">
-                    Выдать выговор
-                </button>
-            </div>
-        </div>
-    </div>
+    {% endif %}
 </div>
-
-<!-- Модальные окна для действий тренера -->
 {% endblock %}
