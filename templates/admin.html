@@ -6,36 +6,38 @@
 <div class="container">
     <h2 class="mb-4">Панель администратора</h2>
 
-    <!-- Навигация по вкладкам -->
     <ul class="nav nav-tabs" id="adminTabs" role="tablist">
         <li class="nav-item" role="presentation"><button class="nav-link active" id="clients-tab" data-bs-toggle="tab" data-bs-target="#clients-panel" type="button">Клиенты</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff-panel" type="button">Сотрудники</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="subscriptions-tab" data-bs-toggle="tab" data-bs-target="#subscriptions-panel" type="button">Абонементы</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections-panel" type="button">Секции</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link" id="trainings-tab" data-bs-toggle="tab" data-bs-target="#trainings-panel" type="button">Тренировки</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="trainings-tab" data-bs-toggle="tab" data-bs-target="#trainings-panel" type="button">Тренировки (просмотр)</button></li>
     </ul>
 
-    <!-- Содержимое вкладок -->
     <div class="tab-content pt-3" id="adminTabsContent">
         
         <!-- === ВКЛАДКА КЛИЕНТЫ === -->
         <div class="tab-pane fade show active" id="clients-panel" role="tabpanel">
             <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addClientModal"><i class="bi bi-plus-circle me-2"></i>Добавить клиента</button>
             <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>ID</th><th>ФИО</th><th>Контакты</th><th>Скидка</th><th>Действия</th></tr></thead>
+                <thead><tr><th>ФИО</th><th>Контакты</th><th>Скидка</th><th>Действия</th></tr></thead>
                 <tbody>
                     {% for client in clients %}
                     <tr>
-                        <td>{{ client.id }}</td>
                         <td>{{ client.last_name }} {{ client.first_name }} {{ client.middle_name or '' }}</td>
                         <td>
                             {% set phone = client.contacts|selectattr('contact_type', 'equalto', 'phone')|map(attribute='contact_value')|first %}
                             {% set email = client.contacts|selectattr('contact_type', 'equalto', 'email')|map(attribute='contact_value')|first %}
-                            <div><small><i class="bi bi-telephone-fill me-1"></i>{{ phone or 'не указан' }}</small></div>
-                            <div><small><i class="bi bi-envelope-fill me-1"></i>{{ email or 'не указан' }}</small></div>
+                            <div><small><i class="bi bi-telephone-fill me-1"></i>{{ phone or '–' }}</small></div>
+                            <div><small><i class="bi bi-envelope-fill me-1"></i>{{ email or '–' }}</small></div>
                         </td>
                         <td>{{ "%.2f"|format(client.discount) }}%</td>
-                        <td><button class="btn btn-sm btn-info edit-client-btn" data-bs-toggle="modal" data-bs-target="#editClientModal" data-client-id="{{ client.id }}">Редактировать</button></td>
+                        <td>
+                            <!-- ИСПРАВЛЕНО: Только кнопка Удалить -->
+                            <form action="/admin/client/{{ client.id }}/delete" method="post" onsubmit="return confirm('Вы уверены, что хотите удалить этого клиента? Это действие необратимо.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -46,23 +48,35 @@
         <div class="tab-pane fade" id="staff-panel" role="tabpanel">
             <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addStaffModal"><i class="bi bi-plus-circle me-2"></i>Добавить сотрудника</button>
             <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>ID</th><th>ФИО</th><th>Должность</th><th>Дата приема</th><th>Действия</th></tr></thead>
-                <tbody>{% for s in staff %}<tr><td>{{ s.id }}</td><td>{{ s.last_name }} {{ s.first_name }} {{ s.middle_name or '' }}</td><td>{{ s.position.name if s.position else 'Не указана' }}</td><td>{{ s.hire_date }}</td><td><button class="btn btn-sm btn-info">Редактировать</button></td></tr>{% endfor %}</tbody>
+                <thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Оклад</th><th>Действия</th></tr></thead>
+                <tbody>
+                    {% for s in staff %}
+                    <tr>
+                        <td>{{ s.last_name }} {{ s.first_name }}</td>
+                        <td>{{ s.position.name if s.position else '–' }}</td>
+                        <td>{{ s.phone or '–' }}</td>
+                        <td>{{ "%.2f"|format(s.salary) if s.salary else '–' }} руб.</td>
+                        <td>
+                             <!-- ИСПРАВЛЕНО: Только кнопка Удалить -->
+                             <form action="/admin/staff/{{ s.id }}/delete" method="post" onsubmit="return confirm('Вы уверены, что хотите удалить этого сотрудника? Это действие необратимо.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table></div>
         </div>
-
-        <!-- === ВКЛАДКА АБОНЕМЕНТЫ === -->
+        
+        <!-- ... (остальные вкладки без изменений) ... -->
         <div class="tab-pane fade" id="subscriptions-panel" role="tabpanel">
             <button class="btn btn-success mb-3 me-2" data-bs-toggle="modal" data-bs-target="#addSubscriptionTypeModal"><i class="bi bi-plus-circle me-2"></i>Создать тип абонемента</button>
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#sellSubscriptionModal"><i class="bi bi-cart-plus me-2"></i>Продать абонемент клиенту</button>
-            <h4 class="mt-4">Проданные абонементы</h4>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>Клиент</th><th>Тип абонемента</th><th>Срок действия</th><th>Статус</th></tr></thead>
-                <tbody>{% for sub in client_subscriptions %}<tr><td>{{ sub.client.first_name }} {{ sub.client.last_name }}</td><td>{{ sub.subscription_type.name }}</td><td>{{ sub.start_date }} – {{ sub.end_date }}</td><td><span class="badge bg-info">{{ sub.status.description if sub.status else sub.status_name }}</span></td></tr>{% endfor %}</tbody>
+            <h4 class="mt-4">Типы абонементов (Продукты)</h4>
+            <div class="table-responsive"><table class="table table-bordered table-sm">
+                <thead><tr><th>Название</th><th>Стоимость</th><th>Описание</th></tr></thead>
+                <tbody>{% for type in all_subscription_types %}<tr><td>{{ type.name }}</td><td>{{ "%.2f"|format(type.cost) }} руб.</td><td>{{ type.description or '–' }}</td></tr>{% endfor %}</tbody>
             </table></div>
         </div>
-
-        <!-- === ВКЛАДКА СЕКЦИИ === -->
         <div class="tab-pane fade" id="sections-panel" role="tabpanel">
             <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSectionModal"><i class="bi bi-plus-circle me-2"></i>Добавить секцию</button>
             <div class="table-responsive"><table class="table table-striped table-hover">
@@ -70,10 +84,8 @@
                 <tbody>{% for section in sections %}<tr><td>{{ section.id }}</td><td>{{ section.name }}</td><td><span class="badge bg-success">{{ section.status_name }}</span></td></tr>{% endfor %}</tbody>
             </table></div>
         </div>
-
-        <!-- === ВКЛАДКА ТРЕНИРОВКИ (только просмотр) === -->
         <div class="tab-pane fade" id="trainings-panel" role="tabpanel">
-            <!-- Кнопка "Добавить тренировку" удалена -->
+            <div class="alert alert-secondary">Создание и управление тренировками доступно в панели Менеджера.</div>
             <div class="table-responsive"><table class="table table-striped table-hover">
                 <thead><tr><th>Название</th><th>Секция</th><th>Тренер</th><th>Тип</th><th>Время начала</th><th>Доступ / Участник</th><th>Лимит</th></tr></thead>
                 <tbody>{% for training in trainings %}<tr><td>{{ training.name }}</td><td>{{ training.section.name }}</td><td>{{ training.trainer.first_name ~ ' ' ~ training.trainer.last_name if training.trainer else '–' }}</td><td>{% if training.is_group %}<span class="badge bg-primary">Групповая</span>{% else %}<span class="badge bg-secondary">Индивидуальная</span>{% endif %}</td><td>{{ training.start_time|datetimeformat }}</td><td>{% if training.is_group %}{% for sub in training.allowed_subscriptions %}<span class="badge bg-light text-dark me-1">{{ sub.name }}</span>{% endfor %}{% else %}{% for p in training.participants %}{{p.client.first_name}} {{p.client.last_name}}{% endfor %}{% endif %}</td><td>{{ training.max_participants }} чел.</td></tr>{% endfor %}</tbody>
@@ -82,13 +94,12 @@
     </div>
 </div>
 
-<!-- === МОДАЛЬНЫЕ ОКНА (без окна для добавления тренировок) === -->
-<div class="modal fade" id="addClientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_client" method="post"><div class="modal-header"><h5 class="modal-title">Добавить клиента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control"></div><div class="mb-3"><label class="form-label">Скидка (%)</label><input type="number" name="discount" class="form-control" value="0" min="0" max="100" step="0.1"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
-<div class="modal fade" id="addStaffModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><form action="/admin/add_staff" method="post"><div class="modal-header"><h5 class="modal-title">Добавить сотрудника</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><h5 class="mb-3">Личные данные</h5><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control"></div><div class="mb-3"><label class="form-label">Дата рождения</label><input type="date" name="birth_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Пол</label><select name="gender" class="form-select" required><option value="М">Мужской</option><option value="Ж">Женский</option></select></div><div class="mb-3"><label class="form-label">Телефон</label><input type="tel" name="phone" class="form-control"></div><div class="mb-3"><label class="form-label">Адрес проживания</label><input type="text" name="address" class="form-control"></div></div><div class="col-md-6"><h5 class="mb-3">Документы и работа</h5><div class="row"><div class="col-6"><div class="mb-3"><label class="form-label">Серия паспорта</label><input type="text" name="passport_series" class="form-control"></div></div><div class="col-6"><div class="mb-3"><label class="form-label">Номер паспорта</label><input type="text" name="passport_number" class="form-control"></div></div></div><div class="mb-3"><label class="form-label">Образование</label><input type="text" name="education" class="form-control"></div><div class="mb-3"><label class="form-label">ИНН</label><input type="text" name="inn" class="form-control" required></div><div class="mb-3"><label class="form-label">СНИЛС</label><input type="text" name="snils" class="form-control" required></div><div class="mb-3"><label class="form-label">Дата приема</label><input type="date" name="hire_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Должность</label><select name="position_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for pos in positions %}<option value="{{ pos.id }}">{{ pos.name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Оклад</label><input type="number" name="salary" class="form-control" step="0.01"></div></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
+<!-- === МОДАЛЬНЫЕ ОКНА === -->
+<!-- Модальное окно для редактирования клиента ПОЛНОСТЬЮ УДАЛЕНО -->
+<div class="modal fade" id="addClientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_client" method="post"><div class="modal-header"><h5 class="modal-title">Добавить клиента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control"></div><div class="mb-3"><label class="form-label">Скидка (%)</label><input type="number" name="discount" class="form-control" value="0" min="0" max="100" step="0.1"></div><hr><h6 class="mb-3">Данные для входа</h6><div class="mb-3"><label class="form-label">Логин</label><input type="text" name="username" class="form-control" required autocomplete="new-password"></div><div class="mb-3"><label class="form-label">Пароль</label><input type="password" name="password" class="form-control" required autocomplete="new-password"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
+<div class="modal fade" id="addStaffModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><form action="/admin/add_staff" method="post"><div class="modal-header"><h5 class="modal-title">Добавить сотрудника</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><h5 class="mb-3">Личные данные</h5><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" placeholder="Иванов" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" placeholder="Иван" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control" placeholder="Иванович"></div><div class="mb-3"><label class="form-label">Дата рождения</label><input type="date" name="birth_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Пол</label><select name="gender" class="form-select" required><option value="М">Мужской</option><option value="Ж">Женский</option></select></div><div class="mb-3"><label class="form-label">Телефон</label><input type="tel" name="phone" class="form-control" placeholder="+79001234567"></div><div class="mb-3"><label class="form-label">Адрес проживания</label><input type="text" name="address" class="form-control" placeholder="г. Город, ул. Улица, д.1, кв.1"></div></div><div class="col-md-6"><h5 class="mb-3">Документы и работа</h5><div class="row"><div class="col-6"><div class="mb-3"><label class="form-label">Серия паспорта</label><input type="text" name="passport_series" class="form-control" placeholder="1234"></div></div><div class="col-6"><div class="mb-3"><label class="form-label">Номер паспорта</label><input type="text" name="passport_number" class="form-control" placeholder="123456"></div></div></div><div class="mb-3"><label class="form-label">Образование</label><input type="text" name="education" class="form-control" placeholder="Название учебного заведения"></div><div class="mb-3"><label class="form-label">ИНН</label><input type="text" name="inn" class="form-control" placeholder="12 цифр" required></div><div class="mb-3"><label class="form-label">СНИЛС</label><input type="text" name="snils" class="form-control" placeholder="11 цифр" required></div><div class="mb-3"><label class="form-label">Дата приема</label><input type="date" name="hire_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Должность</label><select name="position_id" class="form-select" required><option value="" disabled selected>...</option>{% for pos in positions %}<option value="{{ pos.id }}">{{ pos.name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Оклад</label><input type="number" name="salary" class="form-control" placeholder="50000.00" step="0.01"></div></div></div><hr><h5 class="mb-3">Данные для входа</h5><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Логин</label><input type="text" name="username" class="form-control" required autocomplete="new-password"></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">Пароль</label><input type="password" name="password" class="form-control" required autocomplete="new-password"></div></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
 <div class="modal fade" id="addSubscriptionTypeModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_subscription_type" method="post"><div class="modal-header"><h5 class="modal-title">Создать тип абонемента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Название (напр. "VIP Gold")</label><input type="text" name="name" class="form-control" required></div><div class="mb-3"><label class="form-label">Стоимость</label><input type="number" name="cost" class="form-control" required step="0.01" min="0"></div><div class="mb-3"><label class="form-label">Описание (что входит)</label><textarea name="description" class="form-control" rows="3"></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать</button></div></form></div></div></div>
-<div class="modal fade" id="sellSubscriptionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/sell_subscription" method="post"><div class="modal-header"><h5 class="modal-title">Продать абонемент клиенту</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Клиент</label><select name="client_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for client in all_clients %}<option value="{{ client.id }}">{{ client.last_name }} {{ client.first_name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Тип абонемента</label><select name="subscription_type_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for type in all_subscription_types %}<option value="{{ type.id }}">{{ type.name }} ({{ "%.0f"|format(type.cost) }} руб.)</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Дата начала</label><input type="date" name="start_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Дата окончания</label><input type="date" name="end_date" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Продать</button></div></form></div></div></div>
 <div class="modal fade" id="addSectionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_section" method="post"><div class="modal-header"><h5 class="modal-title">Добавить секцию</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Название секции</label><input type="text" name="name" class="form-control" required></div><div class="mb-3"><label class="form-label">Статус</label><select name="status_name" class="form-select" required><option value="active" selected>Активна</option><option value="pending">Планируется</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
-<div class="modal fade" id="editClientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form id="editClientForm" method="post"><div class="modal-header"><h5 class="modal-title" id="editClientModalTitle">Редактирование клиента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" id="edit-last-name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" id="edit-first-name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" id="edit-middle-name" class="form-control"></div><div class="mb-3"><label class="form-label">Телефон</label><input type="tel" name="phone" id="edit-phone" class="form-control"></div><div class="mb-3"><label class="form-label">Email</label><input type="email" name="email" id="edit-email" class="form-control"></div><div class="mb-3"><label class="form-label">Скидка (%)</label><input type="number" name="discount" id="edit-discount" class="form-control" required step="0.01"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div></form></div></div></div>
 {% endblock %}
 
 {% block scripts %}
