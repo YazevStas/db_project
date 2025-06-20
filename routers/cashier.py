@@ -1,34 +1,87 @@
-# routers/cashier.py
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from database import crud, models, get_db
 from services.auth import require_role
+from services.utils import generate_id
 
 router = APIRouter()
 
 @router.get("/dashboard", response_class=HTMLResponse)
+# ... (функция dashboard без изменений)
 async def cashier_dashboard(
     request: Request,
-    user: models.User = Depends(require_role("cashier")), # <--- Зависимость здесь
+    user: models.User = Depends(require_role("cashier")),
     db: Session = Depends(get_db)
 ):
-    payments = db.query(models.Payment).order_by(models.Payment.date.desc()).limit(50).all()
-    subscriptions = db.query(models.ClientSubscription).filter(models.ClientSubscription.status_name == 'active').all()
-    clients = crud.get_clients(db)
-    
+    payments = db.query(models.Payment).options(
+        joinedload(models.Payment.client_subscription).joinedload(models.ClientSubscription.client),
+        joinedload(models.Payment.method)
+    ).order_by(models.Payment.date.desc()).limit(50).all()
+    all_clients = db.query(models.Client).order_by(models.Client.last_name).all()
+    all_subscription_types = db.query(models.SubscriptionType).order_by(models.SubscriptionType.name).all()
+    # Получаем все методы оплаты для формы
+    payment_methods = db.query(models.PaymentMethod).all()
+
     context = {
-        "request": request, "payments": payments, 
-        "subscriptions": subscriptions, "clients": clients
+        "request": request,
+        "current_user": user,
+        "payments": payments,
+        "all_clients": all_clients,
+        "all_subscription_types": all_subscription_types,
+        "payment_methods": payment_methods  # <-- Передаем в шаблон
     }
     return request.app.state.templates.TemplateResponse("cashier.html", context)
+
+
+@router.post("/sell_subscription")
+async def sell_subscription(
+    db: Session = Depends(get_db),
+    user: models.User = Depends(require_role("cashier")),
+    client_id: str = Form(...),
+    subscription_type_id: str = Form(...),
+    start_date: datetime = Form(...),
+    end_date: datetime = Form(...),
+    method_id: str = Form(...)  # <--- ПОЛУЧАЕМ МЕТОД ОПЛАТЫ
+):
+    client_sub = models.ClientSubscription(
+        id=generate_id(), 
+        client_id=client_id, 
+        subscription_type_id=subscription_type_id,
+        start_date=start_date.date(), 
+        end_date=end_date.date(), 
+        status_name='pending'
+    )
+    db.add(client_sub)
+    db.commit()
+    
+    sub_type = db.query(models.SubscriptionType).filter_by(id=subscription_type_id).first()
+    amount = sub_type.cost if sub_type else 0
+
+    if amount > 0:
+        new_payment = models.Payment(
+            id=generate_id(), 
+            client_subscription_id=client_sub.id,
+            amount=amount, 
+            date=datetime.now().date(), 
+            method_id=method_id  # <--- ИСПОЛЬЗУЕМ ПОЛУЧЕННЫЙ МЕТОД
+        )
+        db.add(new_payment)
+        db.commit()
+
+    return RedirectResponse(url="/cashier/dashboard?message=Абонемент успешно продан и платеж зарегистрирован", status_code=303)
+
+
+# --- Старые функции, если они нужны ---
+# Если регистрация клиента и ручное добавление платежа больше не нужны, их можно удалить.
+# Оставим их на всякий случай.
 
 @router.post("/add_payment")
 async def add_payment(
     db: Session = Depends(get_db),
-    user: models.User = Depends(require_role("cashier")), # <--- Зависимость здесь
+    user: models.User = Depends(require_role("cashier")),
     subscription_id: str = Form(...),
     amount: float = Form(...),
     method_id: str = Form(...)
@@ -44,7 +97,7 @@ async def add_payment(
 @router.post("/register_client")
 async def register_client(
     db: Session = Depends(get_db),
-    user: models.User = Depends(require_role("cashier")), # <--- Зависимость здесь
+    user: models.User = Depends(require_role("cashier")),
     last_name: str = Form(...),
     first_name: str = Form(...),
     username: str = Form(...),

@@ -1,91 +1,124 @@
-{% extends "base.html" %}
-
-{% block title %}Панель менеджера{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Панель менеджера{% endblock %} {%
+block content %}
 <div class="container">
-    <h2 class="mb-4">Панель менеджера</h2>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Клиенты</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6>Всего клиентов: {{ clients|length }}</h6>
-                        <button class="btn btn-sm btn-outline-success">Просмотреть всех</button>
-                    </div>
-                    <ul class="list-group">
-                        {% for client in clients[:5] %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ client.last_name }} {{ client.first_name }}
-                            <span class="badge bg-primary rounded-pill">{{ client.discount }}%</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Абонементы</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6>Активные: {{ subscriptions|selectattr('status_name', 'equalto', 'active')|list|length }}</h6>
-                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#addSubscriptionModal">Добавить</button>
-                    </div>
-                    <ul class="list-group">
-                        {% for sub in subscriptions[:5] %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ sub.client.last_name }} - {{ sub.status_name }}
-                            <span class="badge bg-primary rounded-pill">{{ sub.cost }} руб.</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">Тренировки</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6>Предстоящие: {{ trainings|length }}</h6>
-                        <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#addTrainingModal">Добавить</button>
-                    </div>
-                    <ul class="list-group">
-                        {% for training in trainings %}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <strong>{{ training.section.name }}</strong><br>
-                                    <small>{{ training.start_time|datetimeformat('%d.%m.%Y %H:%M') }}</small>
-                                </div>
-                                <span class="badge bg-primary">{{ training.training_type }}</span>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">Статистика</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="statsChart" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+  <h2 class="mb-4">Управление клиентами и сотрудниками</h2>
 
-<!-- Модальные окна для добавления данных -->
+  <ul class="nav nav-tabs" id="managerTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link active"
+        id="clients-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#clients-panel"
+        type="button"
+      >
+        Клиенты ({{ clients|length }})
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="staff-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#staff-panel"
+        type="button"
+      >
+        Сотрудники ({{ staff|length }})
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content pt-3" id="managerTabsContent">
+    <!-- ВКЛАДКА КЛИЕНТЫ -->
+    <div class="tab-pane fade show active" id="clients-panel" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Список клиентов</h5></div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Телефон</th>
+                  <th>Дата регистрации</th>
+                  <th>Скидка</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for client in clients %}
+                <tr>
+                  <td>
+                    {{ client.last_name }} {{ client.first_name }} {{
+                    client.middle_name or '' }}
+                  </td>
+                  <td>
+                    {% set phone = client.contacts|selectattr('contact_type',
+                    'equalto', 'phone')|first %}{{ phone.contact_value if phone
+                    else '–' }}
+                  </td>
+                  <td>{{ client.reg_date }}</td>
+                  <td>{{ "%.2f"|format(client.discount) }}%</td>
+                  <td>
+                    <a
+                      href="/manager/client/{{ client.id }}/edit"
+                      class="btn btn-sm btn-info"
+                      >Редактировать</a
+                    >
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА СОТРУДНИКИ -->
+    <div class="tab-pane fade" id="staff-panel" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Список сотрудников</h5></div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Должность</th>
+                  <th>Оклад</th>
+                  <th>Пол</th>
+                  <th>Телефон</th>
+                  <th>ИНН</th>
+                  <th>СНИЛС</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in staff %}
+                <tr>
+                  <td>{{ s.last_name }} {{ s.first_name }}</td>
+                  <td>{{ s.position.name if s.position else '–' }}</td>
+                  <td>{{ "%.2f"|format(s.salary) if s.salary else '–' }}</td>
+                  <td>{{ s.gender or '–' }}</td>
+                  <td>{{ s.phone or '–' }}</td>
+                  <td>{{ s.inn or '–' }}</td>
+                  <td>{{ s.snils or '–' }}</td>
+                  <td>
+                    <a
+                      href="/manager/staff/{{ s.id }}/edit"
+                      class="btn btn-sm btn-info"
+                      >Редактировать</a
+                    >
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование сотрудника{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card">
+                <div class="card-header"><h3>Редактирование сотрудника: {{ staff.first_name }} {{ staff.last_name }}</h3></div>
+                <div class="card-body">
+                    <form action="/{{ current_role }}/staff/{{ staff.id }}/edit" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Основные данные</h5>
+                                <div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" value="{{ staff.last_name }}" required></div>
+                                <div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" value="{{ staff.first_name }}" required></div>
+                                <div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control" value="{{ staff.middle_name or '' }}"></div>
+                                <div class="mb-3"><label class="form-label">Дата рождения</label><input type="date" name="birth_date" class="form-control" value="{{ staff.birth_date.strftime('%Y-%m-%d') }}" required></div>
+                                <div class="mb-3"><label class="form-label">Пол</label>
+                                    <select name="gender" class="form-select" required>
+                                        <option value="М" {% if staff.gender == 'М' %}selected{% endif %}>Мужской</option>
+                                        <option value="Ж" {% if staff.gender == 'Ж' %}selected{% endif %}>Женский</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" name="phone" class="form-control" value="{{ staff.phone or '' }}" placeholder="+79001234567"></div>
+                                <div class="mb-3"><label class="form-label">Адрес проживания</label><input type="text" name="address" class="form-control" value="{{ staff.address or '' }}" placeholder="г. Город, ул. Улица, д.1, кв.1"></div>
+                                <div class="mb-3"><label class="form-label">Образование</label><input type="text" name="education" class="form-control" value="{{ staff.education or '' }}" placeholder="Название учебного заведения"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Кадровые данные</h5>
+                                <div class="mb-3"><label class="form-label">Должность</label>
+                                    <select name="position_id" class="form-select" required>
+                                        {% for pos in positions %}<option value="{{ pos.id }}" {% if staff.position_id == pos.id %}selected{% endif %}>{{ pos.name }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Оклад</label><input type="number" name="salary" class="form-control" value="{{ staff.salary or '' }}" step="0.01" placeholder="50000.00"></div>
+                                <div class="mb-3"><label class="form-label">Дата приема на работу</label><input type="date" name="hire_date" class="form-control" value="{{ staff.hire_date.strftime('%Y-%m-%d') }}" required></div>
+                                <hr>
+                                <div class="mb-3"><label class="form-label">ИНН</label><input type="text" name="inn" class="form-control" value="{{ staff.inn }}" placeholder="123456789012" required></div>
+                                <div class="mb-3"><label class="form-label">СНИЛС</label><input type="text" name="snils" class="form-control" value="{{ staff.snils }}" placeholder="12345678912" required></div>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="form-label">Серия паспорта</label>
+                                    <input type="text" name="passport_series" class="form-control" value="{{ staff.passport_series or '' }}" pattern="[0-9]{4}" maxlength="4" title="4 цифры" placeholder="1234">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Номер паспорта</label>
+                                    <input type="text" name="passport_number" class="form-control" value="{{ staff.passport_number or '' }}" pattern="[0-9]{6}" maxlength="6" title="6 цифр" placeholder="123456">
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-end">
+                            <a href="/{{ current_role }}/dashboard" class="btn btn-secondary me-2">Отмена</a>
+                            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

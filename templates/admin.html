@@ -1,95 +1,790 @@
-{% extends "base.html" %}
-
-{% block title %}Панель администратора{% endblock %}
-
+{% extends "base.html" %} {% block title %}Панель администратора{% endblock %}
 {% block content %}
 <div class="container">
-    <h2 class="mb-4">Панель администратора</h2>
+  <h2 class="mb-4">Панель администратора</h2>
 
-    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
-        <li class="nav-item" role="presentation"><button class="nav-link active" id="clients-tab" data-bs-toggle="tab" data-bs-target="#clients-panel" type="button">Клиенты</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff-panel" type="button">Сотрудники</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link" id="subscriptions-tab" data-bs-toggle="tab" data-bs-target="#subscriptions-panel" type="button">Абонементы</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections-panel" type="button">Секции</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link" id="trainings-tab" data-bs-toggle="tab" data-bs-target="#trainings-panel" type="button">Тренировки</button></li>
-    </ul>
+  <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link active"
+        id="clients-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#clients-panel"
+        type="button"
+      >
+        Клиенты
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="staff-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#staff-panel"
+        type="button"
+      >
+        Сотрудники
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="subscriptions-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#subscriptions-panel"
+        type="button"
+      >
+        Абонементы
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="sections-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#sections-panel"
+        type="button"
+      >
+        Секции
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="trainings-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#trainings-panel"
+        type="button"
+      >
+        Тренировки
+      </button>
+    </li>
+  </ul>
 
-    <div class="tab-content pt-3" id="adminTabsContent">
-        <div class="tab-pane fade show active" id="clients-panel" role="tabpanel">
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addClientModal"><i class="bi bi-plus-circle me-2"></i>Добавить клиента</button>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>ID</th><th>ФИО</th><th>Дата регистрации</th><th>Скидка</th><th>Действия</th></tr></thead>
-                <tbody>{% for client in clients %}<tr><td>{{ client.id }}</td><td>{{ client.last_name }} {{ client.first_name }} {{ client.middle_name or '' }}</td><td>{{ client.reg_date }}</td><td>{{ "%.2f"|format(client.discount) }}%</td><td><a href="/admin/client/{{ client.id }}/edit" class="btn btn-sm btn-info">Редактировать</a> <button class="btn btn-sm btn-danger">Удалить</button></td></tr>{% endfor %}</tbody>
-            </table></div>
-        </div>
-        <div class="tab-pane fade" id="staff-panel" role="tabpanel">
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addStaffModal"><i class="bi bi-plus-circle me-2"></i>Добавить сотрудника</button>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>ID</th><th>ФИО</th><th>Должность</th><th>Дата приема</th><th>Действия</th></tr></thead>
-                <tbody>{% for s in staff %}<tr><td>{{ s.id }}</td><td>{{ s.last_name }} {{ s.first_name }} {{ s.middle_name or '' }}</td><td>{{ s.position.name if s.position else 'Не указана' }}</td><td>{{ s.hire_date }}</td><td><button class="btn btn-sm btn-info">Редактировать</button> <button class="btn btn-sm btn-danger">Удалить</button></td></tr>{% endfor %}</tbody>
-            </table></div>
-        </div>
-        <div class="tab-pane fade" id="subscriptions-panel" role="tabpanel">
-            <button class="btn btn-success mb-3 me-2" data-bs-toggle="modal" data-bs-target="#addSubscriptionTypeModal"><i class="bi bi-plus-circle me-2"></i>Создать тип абонемента</button>
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#sellSubscriptionModal"><i class="bi bi-cart-plus me-2"></i>Продать абонемент клиенту</button>
-            <h4 class="mt-4">Проданные абонементы</h4>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>Клиент</th><th>Тип абонемента</th><th>Срок действия</th><th>Статус</th></tr></thead>
-                <tbody>{% for sub in client_subscriptions %}<tr><td>{{ sub.client.first_name }} {{ sub.client.last_name }}</td><td>{{ sub.subscription_type.name }}</td><td>{{ sub.start_date }} – {{ sub.end_date }}</td><td><span class="badge bg-info">{{ sub.status.description if sub.status else sub.status_name }}</span></td></tr>{% endfor %}</tbody>
-            </table></div>
-        </div>
-        <div class="tab-pane fade" id="sections-panel" role="tabpanel">
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSectionModal"><i class="bi bi-plus-circle me-2"></i>Добавить секцию</button>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>ID</th><th>Название</th><th>Статус</th></tr></thead>
-                <tbody>{% for section in sections %}<tr><td>{{ section.id }}</td><td>{{ section.name }}</td><td><span class="badge bg-success">{{ section.status_name }}</span></td></tr>{% endfor %}</tbody>
-            </table></div>
-        </div>
-        <div class="tab-pane fade" id="trainings-panel" role="tabpanel">
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addTrainingModal"><i class="bi bi-plus-circle me-2"></i>Добавить тренировку</button>
-            <div class="table-responsive"><table class="table table-striped table-hover">
-                <thead><tr><th>Название</th><th>Секция</th><th>Тренер</th><th>Тип</th><th>Время начала</th><th>Доступ / Участник</th><th>Лимит</th></tr></thead>
-                <tbody>{% for training in trainings %}<tr><td>{{ training.name }}</td><td>{{ training.section.name }}</td><td>{{ training.trainer.first_name ~ ' ' ~ training.trainer.last_name if training.trainer else '–' }}</td><td>{% if training.is_group %}<span class="badge bg-primary">Групповая</span>{% else %}<span class="badge bg-secondary">Индивидуальная</span>{% endif %}</td><td>{{ training.start_time|datetimeformat }}</td><td>{% if training.is_group %}{% for sub in training.allowed_subscriptions %}<span class="badge bg-light text-dark me-1">{{ sub.name }}</span>{% endfor %}{% else %}{% for p in training.participants %}{{p.client.first_name}} {{p.client.last_name}}{% endfor %}{% endif %}</td><td>{{ training.max_participants }} чел.</td></tr>{% endfor %}</tbody>
-            </table></div>
-        </div>
+  <div class="tab-content pt-3" id="adminTabsContent">
+    <!-- ВКЛАДКА КЛИЕНТЫ -->
+    <div class="tab-pane fade show active" id="clients-panel" role="tabpanel">
+      <button
+        class="btn btn-primary mb-3"
+        data-bs-toggle="modal"
+        data-bs-target="#addClientModal"
+      >
+        <i class="bi bi-plus-circle me-2"></i>Добавить клиента
+      </button>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>ФИО</th>
+              <th>Дата регистрации</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for client in clients %}
+            <tr>
+              <td>{{ client.id }}</td>
+              <td>
+                {{ client.last_name }} {{ client.first_name }} {{
+                client.middle_name or '' }}
+              </td>
+              <td>{{ client.reg_date }}</td>
+              <td>
+                <form
+                  action="/admin/client/{{ client.id }}/delete"
+                  method="post"
+                  onsubmit="return confirm('Вы уверены, что хотите удалить этого клиента?');"
+                >
+                  <button type="submit" class="btn btn-sm btn-danger">
+                    Удалить
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- ВКЛАДКА СОТРУДНИКИ -->
+    <div class="tab-pane fade" id="staff-panel" role="tabpanel">
+      <button
+        class="btn btn-primary mb-3"
+        data-bs-toggle="modal"
+        data-bs-target="#addStaffModal"
+      >
+        <i class="bi bi-plus-circle me-2"></i>Добавить сотрудника
+      </button>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>ФИО</th>
+              <th>Должность</th>
+              <th>Дата приема</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in staff %}
+            <tr>
+              <td>{{ s.id }}</td>
+              <td>
+                {{ s.last_name }} {{ s.first_name }} {{ s.middle_name or '' }}
+              </td>
+              <td>{{ s.position.name if s.position else 'Не указана' }}</td>
+              <td>{{ s.hire_date }}</td>
+              <td>
+                <form
+                  action="/admin/staff/{{ s.id }}/delete"
+                  method="post"
+                  onsubmit="return confirm('Вы уверены, что хотите удалить этого сотрудника?');"
+                >
+                  <button type="submit" class="btn btn-sm btn-danger">
+                    Удалить
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА АБОНЕМЕНТЫ -->
+    <div class="tab-pane fade" id="subscriptions-panel" role="tabpanel">
+      <button
+        class="btn btn-success mb-3 me-2"
+        data-bs-toggle="modal"
+        data-bs-target="#addSubscriptionTypeModal"
+      >
+        <i class="bi bi-plus-circle me-2"></i>Создать тип абонемента
+      </button>
+      <h4 class="mt-4">Проданные абонементы</h4>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Клиент</th>
+              <th>Тип абонемента</th>
+              <th>Срок действия</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sub in client_subscriptions %}
+            <tr>
+              <td>{{ sub.client.first_name }} {{ sub.client.last_name }}</td>
+              <td>{{ sub.subscription_type.name }}</td>
+              <td>{{ sub.start_date }} – {{ sub.end_date }}</td>
+              <td>
+                <span class="badge bg-info"
+                  >{{ sub.status.description if sub.status else sub.status_name
+                  }}</span
+                >
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА СЕКЦИИ -->
+    <div class="tab-pane fade" id="sections-panel" role="tabpanel">
+      <button
+        class="btn btn-primary mb-3"
+        data-bs-toggle="modal"
+        data-bs-target="#addSectionModal"
+      >
+        <i class="bi bi-plus-circle me-2"></i>Добавить секцию
+      </button>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Название</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for section in sections %}
+            <tr>
+              <td>{{ section.id }}</td>
+              <td>{{ section.name }}</td>
+              <td>
+                <span class="badge bg-success">{{ section.status_name }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА ТРЕНИРОВКИ -->
+    <div class="tab-pane fade" id="trainings-panel" role="tabpanel">
+      <button
+        class="btn btn-primary mb-3"
+        data-bs-toggle="modal"
+        data-bs-target="#addTrainingModal"
+      >
+        <i class="bi bi-plus-circle me-2"></i>Добавить тренировку
+      </button>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Секция</th>
+              <th>Тренер</th>
+              <th>Тип</th>
+              <th>Время начала</th>
+              <th>Доступ / Участник</th>
+              <th>Лимит</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for training in trainings %}
+            <tr>
+              <td>{{ training.name }}</td>
+              <td>{{ training.section.name }}</td>
+              <td>
+                {{ training.trainer.first_name ~ ' ' ~
+                training.trainer.last_name if training.trainer else '–' }}
+              </td>
+              <td>
+                {% if training.is_group %}<span class="badge bg-primary"
+                  >Групповая</span
+                >{% else %}<span class="badge bg-secondary">Индивидуальная</span
+                >{% endif %}
+              </td>
+              <td>{{ training.start_time|datetimeformat }}</td>
+              <td>
+                {% if training.is_group %}{% for sub in
+                training.allowed_subscriptions %}<span
+                  class="badge bg-light text-dark me-1"
+                  >{{ sub.name }}</span
+                >{% endfor %}{% else %}{% for p in training.participants
+                %}{{p.client.first_name}} {{p.client.last_name}}{% endfor %}{%
+                endif %}
+              </td>
+              <td>{{ training.max_participants }} чел.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- ... (все модальные окна остаются без изменений, я включил их полный код для надежности) ... -->
-<div class="modal fade" id="addClientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_client" method="post"><div class="modal-header"><h5 class="modal-title">Добавить клиента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control"></div><div class="mb-3"><label class="form-label">Скидка (%)</label><input type="number" name="discount" class="form-control" value="0" min="0" max="100" step="0.1"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
-<div class="modal fade" id="addStaffModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_staff" method="post"><div class="modal-header"><h5 class="modal-title">Добавить сотрудника</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Фамилия</label><input type="text" name="last_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Имя</label><input type="text" name="first_name" class="form-control" required></div><div class="mb-3"><label class="form-label">Отчество</label><input type="text" name="middle_name" class="form-control"></div><div class="mb-3"><label class="form-label">Дата рождения</label><input type="date" name="birth_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Пол</label><select name="gender" class="form-select" required><option value="М">Мужской</option><option value="Ж">Женский</option></select></div><div class="mb-3"><label class="form-label">ИНН</label><input type="text" name="inn" class="form-control" required></div><div class="mb-3"><label class="form-label">СНИЛС</label><input type="text" name="snils" class="form-control" required></div><div class="mb-3"><label class="form-label">Дата приема</label><input type="date" name="hire_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Должность</label><select name="position_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for pos in positions %}<option value="{{ pos.id }}">{{ pos.name }}</option>{% endfor %}</select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
-<div class="modal fade" id="addSubscriptionTypeModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_subscription_type" method="post"><div class="modal-header"><h5 class="modal-title">Создать тип абонемента</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Название (напр. "VIP Gold")</label><input type="text" name="name" class="form-control" required></div><div class="mb-3"><label class="form-label">Стоимость</label><input type="number" name="cost" class="form-control" required step="0.01" min="0"></div><div class="mb-3"><label class="form-label">Описание (что входит)</label><textarea name="description" class="form-control" rows="3"></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать</button></div></form></div></div></div>
-<div class="modal fade" id="sellSubscriptionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/sell_subscription" method="post"><div class="modal-header"><h5 class="modal-title">Продать абонемент клиенту</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Клиент</label><select name="client_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for client in all_clients %}<option value="{{ client.id }}">{{ client.last_name }} {{ client.first_name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Тип абонемента</label><select name="subscription_type_id" class="form-select" required><option value="" disabled selected>Выберите...</option>{% for type in all_subscription_types %}<option value="{{ type.id }}">{{ type.name }} ({{ "%.0f"|format(type.cost) }} руб.)</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Дата начала</label><input type="date" name="start_date" class="form-control" required></div><div class="mb-3"><label class="form-label">Дата окончания</label><input type="date" name="end_date" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Продать</button></div></form></div></div></div>
-<div class="modal fade" id="addSectionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="/admin/add_section" method="post"><div class="modal-header"><h5 class="modal-title">Добавить секцию</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Название секции</label><input type="text" name="name" class="form-control" required></div><div class="mb-3"><label class="form-label">Статус</label><select name="status_name" class="form-select" required><option value="active" selected>Активна</option><option value="pending">Планируется</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
-<div class="modal fade" id="addTrainingModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form action="/admin/add_training" method="post"><div class="modal-header"><h5 class="modal-title">Добавить тренировку в расписание</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Название</label><input type="text" name="name" class="form-control" required></div><div class="mb-3"><label class="form-label">Секция</label><select name="section_id" class="form-select" required><option value="" disabled selected>...</option>{% for section in sections %}<option value="{{ section.id }}">{{ section.name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Тренер</label><select name="trainer_id" class="form-select"><option value="">Без тренера</option>{% for trainer in trainers %}<option value="{{ trainer.id }}">{{ trainer.last_name }} {{ trainer.first_name }}</option>{% endfor %}</select></div><div class="mb-3"><label class="form-label">Время начала</label><input type="datetime-local" name="start_time" class="form-control" required></div><div class="mb-3"><label class="form-label">Время окончания</label><input type="datetime-local" name="end_time" class="form-control" required></div></div><div class="col-md-6"><div class="form-check form-switch mb-3"><input type="checkbox" name="is_group" class="form-check-input" id="isGroupSwitch" value="True"><label class="form-check-label" for="isGroupSwitch"><b>Групповая тренировка</b></label></div><div id="individual-fields"><div class="mb-3"><label for="clientSelector" class="form-label">Клиент для записи</label><select name="client_id" id="clientSelector" class="form-select"><option value="" disabled selected>Выберите...</option>{% for client in all_clients %}<option value="{{ client.id }}">{{ client.last_name }} {{ client.first_name }}</option>{% endfor %}</select></div></div><div id="group-fields" style="display: none;"><div class="mb-3"><label class="form-label">Лимит участников</label><input type="number" name="max_participants" class="form-control" value="10" min="1"></div><label class="form-label">Доступ для абонементов:</label><div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">{% for sub_type in all_subscription_types %}<div class="form-check"><input class="form-check-input" type="checkbox" name="allowed_subscription_type_ids" value="{{ sub_type.id }}" id="sub_type_{{ sub_type.id }}"><label class="form-check-label" for="sub_type_{{ sub_type.id }}">{{ sub_type.name }}</label></div>{% endfor %}</div></div></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div></form></div></div></div>
+<!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ КЛИЕНТА -->
+<div class="modal fade" id="addClientModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="/admin/add_client" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить клиента</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Фамилия</label
+            ><input
+              type="text"
+              name="last_name"
+              class="form-control"
+              placeholder="Иванов"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Имя</label
+            ><input
+              type="text"
+              name="first_name"
+              class="form-control"
+              placeholder="Иван"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Отчество</label
+            ><input
+              type="text"
+              name="middle_name"
+              class="form-control"
+              placeholder="Иванович"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Скидка (%)</label
+            ><input
+              type="number"
+              name="discount"
+              class="form-control"
+              value="0"
+              min="0"
+              max="100"
+              step="0.1"
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Отмена</button
+          ><button type="submit" class="btn btn-primary">Добавить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-{% endblock %}
+<!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ СОТРУДНИКА -->
+<div class="modal fade" id="addStaffModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form action="/admin/add_staff" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить сотрудника</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Фамилия</label
+                ><input
+                  type="text"
+                  name="last_name"
+                  class="form-control"
+                  placeholder="Сидоров"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Имя</label
+                ><input
+                  type="text"
+                  name="first_name"
+                  class="form-control"
+                  placeholder="Сидор"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Отчество</label
+                ><input
+                  type="text"
+                  name="middle_name"
+                  class="form-control"
+                  placeholder="Сидорович"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Дата рождения</label
+                ><input
+                  type="date"
+                  name="birth_date"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Пол</label
+                ><select name="gender" class="form-select" required>
+                  <option value="М">Мужской</option>
+                  <option value="Ж">Женский</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Телефон</label
+                ><input
+                  type="tel"
+                  name="phone"
+                  class="form-control"
+                  placeholder="+79001234567"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Адрес проживания</label
+                ><input
+                  type="text"
+                  name="address"
+                  class="form-control"
+                  placeholder="г. Город, ул. Улица, д.1, кв.1"
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Серия паспорта</label
+                ><input
+                  type="text"
+                  name="passport_series"
+                  class="form-control"
+                  placeholder="1234"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Номер паспорта</label
+                ><input
+                  type="text"
+                  name="passport_number"
+                  class="form-control"
+                  placeholder="123456"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Образование</label
+                ><input
+                  type="text"
+                  name="education"
+                  class="form-control"
+                  placeholder="Название учебного заведения"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">ИНН</label
+                ><input
+                  type="text"
+                  name="inn"
+                  class="form-control"
+                  placeholder="123456789012"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">СНИЛС</label
+                ><input
+                  type="text"
+                  name="snils"
+                  class="form-control"
+                  placeholder="12345678912"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Дата приема</label
+                ><input
+                  type="date"
+                  name="hire_date"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Должность</label
+                ><select name="position_id" class="form-select" required>
+                  <option value="" disabled selected>...</option>
+                  {% for pos in positions %}
+                  <option value="{{ pos.id }}">{{ pos.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Оклад</label
+                ><input
+                  type="number"
+                  name="salary"
+                  class="form-control"
+                  placeholder="50000.00"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Отмена</button
+          ><button type="submit" class="btn btn-primary">Добавить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-{% block scripts %}
+<!-- МОДАЛЬНОЕ ОКНО: СОЗДАТЬ ТИП АБОНЕМЕНТА -->
+<div class="modal fade" id="addSubscriptionTypeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="/admin/add_subscription_type" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Создать тип абонемента</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Название (напр. "VIP Gold")</label
+            ><input type="text" name="name" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Стоимость</label
+            ><input
+              type="number"
+              name="cost"
+              class="form-control"
+              required
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Описание (что входит)</label
+            ><textarea
+              name="description"
+              class="form-control"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Отмена</button
+          ><button type="submit" class="btn btn-primary">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ СЕКЦИЮ -->
+<div class="modal fade" id="addSectionModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="/admin/add_section" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить секцию</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Название секции</label
+            ><input type="text" name="name" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Статус</label
+            ><select name="status_name" class="form-select" required>
+              <option value="active" selected>Активна</option>
+              <option value="pending">Планируется</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Отмена</button
+          ><button type="submit" class="btn btn-primary">Добавить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ ТРЕНИРОВКУ -->
+<div class="modal fade" id="addTrainingModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="/admin/add_training" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить тренировку в расписание</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Название</label
+                ><input type="text" name="name" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Секция</label
+                ><select name="section_id" class="form-select" required>
+                  <option value="" disabled selected>...</option>
+                  {% for section in all_sections %}
+                  <option value="{{ section.id }}">{{ section.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Тренер</label
+                ><select name="trainer_id" class="form-select">
+                  <option value="">Без тренера</option>
+                  {% for trainer in trainers %}
+                  <option value="{{ trainer.id }}">
+                    {{ trainer.last_name }} {{ trainer.first_name }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Время начала</label
+                ><input
+                  type="datetime-local"
+                  name="start_time"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Время окончания</label
+                ><input
+                  type="datetime-local"
+                  name="end_time"
+                  class="form-control"
+                  required
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch mb-3">
+                <input
+                  type="checkbox"
+                  name="is_group"
+                  class="form-check-input"
+                  id="isGroupSwitch"
+                  value="True"
+                /><label class="form-check-label" for="isGroupSwitch"
+                  ><b>Групповая тренировка</b></label
+                >
+              </div>
+              <div id="individual-fields">
+                <div class="mb-3">
+                  <label for="clientSelector" class="form-label"
+                    >Клиент для записи</label
+                  ><select
+                    name="client_id"
+                    id="clientSelector"
+                    class="form-select"
+                  >
+                    <option value="" disabled selected>Выберите...</option>
+                    {% for client in all_clients %}
+                    <option value="{{ client.id }}">
+                      {{ client.last_name }} {{ client.first_name }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div id="group-fields" style="display: none">
+                <div class="mb-3">
+                  <label class="form-label">Лимит участников</label
+                  ><input
+                    type="number"
+                    name="max_participants"
+                    class="form-control"
+                    value="10"
+                    min="1"
+                  />
+                </div>
+                <label class="form-label">Доступ для абонементов:</label>
+                <div
+                  class="border rounded p-2"
+                  style="max-height: 200px; overflow-y: auto"
+                >
+                  {% for sub_type in all_subscription_types %}
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      name="allowed_subscription_type_ids"
+                      value="{{ sub_type.id }}"
+                      id="sub_type_{{ sub_type.id }}"
+                    /><label
+                      class="form-check-label"
+                      for="sub_type_{{ sub_type.id }}"
+                      >{{ sub_type.name }}</label
+                    >
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Отмена</button
+          ><button type="submit" class="btn btn-primary">Добавить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const isGroupSwitch = document.getElementById('isGroupSwitch');
+  document.addEventListener("DOMContentLoaded", function () {
+    const isGroupSwitch = document.getElementById("isGroupSwitch");
     if (isGroupSwitch) {
-        const individualFields = document.getElementById('individual-fields');
-        const groupFields = document.getElementById('group-fields');
-        const clientSelector = document.getElementById('clientSelector');
-        const maxParticipantsInput = groupFields.querySelector('input[name="max_participants"]');
-        function toggleTrainingFields() {
-            if (isGroupSwitch.checked) {
-                individualFields.style.display = 'none';
-                clientSelector.required = false;
-                groupFields.style.display = 'block';
-                maxParticipantsInput.required = true;
-            } else {
-                individualFields.style.display = 'block';
-                clientSelector.required = true;
-                groupFields.style.display = 'none';
-                maxParticipantsInput.required = false;
-            }
+      const individualFields = document.getElementById("individual-fields");
+      const groupFields = document.getElementById("group-fields");
+      const clientSelector = document.getElementById("clientSelector");
+      const maxParticipantsInput = groupFields.querySelector(
+        'input[name="max_participants"]'
+      );
+      function toggleTrainingFields() {
+        if (isGroupSwitch.checked) {
+          individualFields.style.display = "none";
+          clientSelector.required = false;
+          groupFields.style.display = "block";
+          maxParticipantsInput.required = true;
+        } else {
+          individualFields.style.display = "block";
+          clientSelector.required = true;
+          groupFields.style.display = "none";
+          maxParticipantsInput.required = false;
         }
-        toggleTrainingFields();
-        isGroupSwitch.addEventListener('change', toggleTrainingFields);
+      }
+      toggleTrainingFields();
+      isGroupSwitch.addEventListener("change", toggleTrainingFields);
     }
-});
+  });
 </script>
 {% endblock %}

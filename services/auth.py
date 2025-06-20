@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-
+from fastapi.responses import RedirectResponse
 from database import crud, get_db, models
 
 load_dotenv()

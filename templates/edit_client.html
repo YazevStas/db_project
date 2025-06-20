@@ -1,0 +1,96 @@
+{% extends "base.html" %} {% block title %}Редактирование клиента{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h3>
+            Редактирование клиента: {{ client.first_name }} {{ client.last_name
+            }}
+          </h3>
+        </div>
+        <div class="card-body">
+          <!-- ИЗМЕНЕНА ЭТА СТРОКА -->
+          <form
+            action="/{{ current_role }}/client/{{ client.id }}/edit"
+            method="post"
+          >
+            <!-- ... (все поля формы остаются без изменений) ... -->
+            <div class="mb-3">
+              <label for="last_name" class="form-label">Фамилия</label>
+              <input
+                type="text"
+                class="form-control"
+                id="last_name"
+                name="last_name"
+                value="{{ client.last_name }}"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="first_name" class="form-label">Имя</label>
+              <input
+                type="text"
+                class="form-control"
+                id="first_name"
+                name="first_name"
+                value="{{ client.first_name }}"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="middle_name" class="form-label">Отчество</label>
+              <input
+                type="text"
+                class="form-control"
+                id="middle_name"
+                name="middle_name"
+                value="{{ client.middle_name or '' }}"
+              />
+            </div>
+            {% set phone = client.contacts|selectattr('contact_type', 'equalto',
+            'phone')|map(attribute='contact_value')|first or '' %}
+            <div class="mb-3">
+              <label for="phone" class="form-label">Номер телефона</label>
+              <input
+                type="tel"
+                class="form-control"
+                id="phone"
+                name="phone"
+                value="{{ phone }}"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="discount" class="form-label">Скидка (%)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="discount"
+                name="discount"
+                value="{{ client.discount }}"
+                min="0"
+                max="100"
+                step="0.1"
+                required
+              />
+            </div>
+            <hr />
+            <div class="d-flex justify-content-end">
+              <!-- ИЗМЕНЕНА ЭТА СТРОКА -->
+              <a
+                href="/{{ current_role }}/dashboard"
+                class="btn btn-secondary me-2"
+                >Отмена</a
+              >
+              <button type="submit" class="btn btn-primary">
+                Сохранить изменения
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

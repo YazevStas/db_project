@@ -7,21 +7,14 @@ from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
-# --- НОВАЯ СВЯЗУЮЩАЯ ТАБЛИЦА (Многие-ко-многим) ---
-# Определяет, какие типы абонементов имеют доступ к каким тренировкам.
 training_subscription_access = Table('training_subscription_access', Base.metadata,
     Column('training_id', String(50), ForeignKey('trainings.id'), primary_key=True),
     Column('subscription_type_id', String(50), ForeignKey('subscription_types.id'), primary_key=True)
 )
 
-
-# --- Справочные таблицы (без изменений) ---
 class Status(Base): __tablename__ = 'statuses'; name = Column(String(50), primary_key=True); description = Column(String(200))
 class Position(Base): __tablename__ = 'positions'; id = Column(String(50), primary_key=True); name = Column(String(50), nullable=False); min_salary = Column(Numeric(10, 2), nullable=False); max_salary = Column(Numeric(10, 2), nullable=False)
 class PaymentMethod(Base): __tablename__ = 'payment_methods'; id = Column(String(20), primary_key=True); name = Column(String(50), nullable=False)
-
-
-# --- Основные сущности ---
 
 class Client(Base):
     __tablename__ = 'clients'
@@ -38,6 +31,7 @@ class Client(Base):
     warnings = relationship("Warning", back_populates="client", cascade="all, delete-orphan")
     contacts = relationship("ClientContact", back_populates="client", cascade="all, delete-orphan")
 
+# --- ИЗМЕНЕННАЯ МОДЕЛЬ ---
 class Staff(Base):
     __tablename__ = 'staff'
     id = Column(String(50), primary_key=True)
@@ -46,15 +40,44 @@ class Staff(Base):
     middle_name = Column(String(50))
     birth_date = Column(Date, nullable=False)
     gender = Column(String(1))
+    phone = Column(String(20), nullable=True)
+    
+    # Паспортные и личные данные
+    passport_series = Column(String(4), nullable=True)
+    passport_number = Column(String(6), nullable=True)
+    address = Column(String(255), nullable=True)
+    education = Column(String(255), nullable=True)
+    
+    # Финансовые и кадровые данные
     inn = Column(String(12), unique=True, nullable=False)
     snils = Column(String(11), unique=True, nullable=False)
     hire_date = Column(Date, nullable=False)
     position_id = Column(String(50), ForeignKey('positions.id'))
-    
+    salary = Column(Numeric(10, 2), nullable=True) # Оклад
+
+    # Связи
     position = relationship("Position")
     user = relationship("User", back_populates="staff", uselist=False, cascade="all, delete-orphan")
     trainings = relationship("Training", back_populates="trainer")
     warnings = relationship("Warning", back_populates="staff")
+
+class Equipment(Base):
+    __tablename__ = 'equipment'
+    id = Column(String(50), primary_key=True)
+    name = Column(String(100), nullable=False)
+    model = Column(String(100), nullable=True)
+    section_id = Column(String(50), ForeignKey('sections.id'), nullable=False)
+    
+    purchase_date = Column(Date, nullable=False) # Дата покупки
+    warranty_months = Column(Integer, nullable=False) # Срок гарантии в месяцах
+    
+    # Новое поле для даты последнего обслуживания
+    last_maintenance_date = Column(Date, nullable=True) 
+    
+    quantity = Column(Integer, default=1, nullable=False)
+
+    # Связи
+    section = relationship("Section")
 
 class User(Base):
     __tablename__ = 'users'
@@ -74,9 +97,6 @@ class Section(Base):
     name = Column(String(50), nullable=False)
     status_name = Column(String(50), ForeignKey('statuses.name'))
 
-
-# --- Модели с изменениями ---
-
 class SubscriptionType(Base):
     __tablename__ = 'subscription_types'
     id = Column(String(50), primary_key=True)
@@ -85,7 +105,6 @@ class SubscriptionType(Base):
     description = Column(String(255))
     
     instances = relationship("ClientSubscription", back_populates="subscription_type")
-    # НОВАЯ СВЯЗЬ: показывает, к каким тренировкам дает доступ этот тип абонемента
     accessible_trainings = relationship("Training", secondary=training_subscription_access, back_populates="allowed_subscriptions")
 
 class Training(Base):
@@ -102,10 +121,8 @@ class Training(Base):
     section = relationship("Section")
     trainer = relationship("Staff", back_populates="trainings")
     participants = relationship("TrainingParticipant", back_populates="training", cascade="all, delete-orphan")
-    # НОВАЯ СВЯЗЬ: показывает, какие типы абонементов имеют доступ к этой тренировке
     allowed_subscriptions = relationship("SubscriptionType", secondary=training_subscription_access, back_populates="accessible_trainings")
 
-# --- Остальные модели (без изменений) ---
 class ClientSubscription(Base): __tablename__ = 'client_subscriptions'; id = Column(String(50), primary_key=True); client_id = Column(String(50), ForeignKey('clients.id'), nullable=False); subscription_type_id = Column(String(50), ForeignKey('subscription_types.id'), nullable=False); start_date = Column(Date, nullable=False); end_date = Column(Date, nullable=False); status_name = Column(String(50), ForeignKey('statuses.name')); client = relationship("Client", back_populates="subscriptions"); subscription_type = relationship("SubscriptionType", back_populates="instances"); status = relationship("Status"); payment = relationship("Payment", back_populates="client_subscription", uselist=False, cascade="all, delete-orphan")
 class TrainingParticipant(Base): __tablename__ = 'training_participants'; training_id = Column(String(50), ForeignKey('trainings.id'), primary_key=True); client_id = Column(String(50), ForeignKey('clients.id'), primary_key=True); status_name = Column(String(50), ForeignKey('statuses.name')); training = relationship("Training", back_populates="participants"); client = relationship("Client", back_populates="participants"); status = relationship("Status")
 class ClientContact(Base): __tablename__ = 'client_contacts'; client_id = Column(String(50), ForeignKey('clients.id'), primary_key=True); contact_type = Column(String(20), primary_key=True); contact_value = Column(String(254), nullable=False); client = relationship("Client", back_populates="contacts")
