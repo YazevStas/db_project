@@ -1,124 +1,170 @@
-{% extends "base.html" %} {% block title %}Панель менеджера{% endblock %} {%
-block content %}
+{% extends "base.html" %}
+
+{% block title %}Панель менеджера{% endblock %}
+
+{% block content %}
 <div class="container">
-  <h2 class="mb-4">Управление клиентами и сотрудниками</h2>
+    <h2 class="mb-4">Панель Менеджера</h2>
 
-  <ul class="nav nav-tabs" id="managerTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link active"
-        id="clients-tab"
-        data-bs-toggle="tab"
-        data-bs-target="#clients-panel"
-        type="button"
-      >
-        Клиенты ({{ clients|length }})
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="staff-tab"
-        data-bs-toggle="tab"
-        data-bs-target="#staff-panel"
-        type="button"
-      >
-        Сотрудники ({{ staff|length }})
-      </button>
-    </li>
-  </ul>
+    <ul class="nav nav-tabs" id="managerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="clients-tab-manager" data-bs-toggle="tab" data-bs-target="#clients-panel-manager" type="button">Клиенты</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="staff-tab-manager" data-bs-toggle="tab" data-bs-target="#staff-panel-manager" type="button">Сотрудники</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="trainings-tab-manager" data-bs-toggle="tab" data-bs-target="#trainings-panel-manager" type="button">Тренировки</button>
+        </li>
+    </ul>
 
-  <div class="tab-content pt-3" id="managerTabsContent">
-    <!-- ВКЛАДКА КЛИЕНТЫ -->
-    <div class="tab-pane fade show active" id="clients-panel" role="tabpanel">
-      <div class="card">
-        <div class="card-header"><h5 class="mb-0">Список клиентов</h5></div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead>
-                <tr>
-                  <th>ФИО</th>
-                  <th>Телефон</th>
-                  <th>Дата регистрации</th>
-                  <th>Скидка</th>
-                  <th>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for client in clients %}
-                <tr>
-                  <td>
-                    {{ client.last_name }} {{ client.first_name }} {{
-                    client.middle_name or '' }}
-                  </td>
-                  <td>
-                    {% set phone = client.contacts|selectattr('contact_type',
-                    'equalto', 'phone')|first %}{{ phone.contact_value if phone
-                    else '–' }}
-                  </td>
-                  <td>{{ client.reg_date }}</td>
-                  <td>{{ "%.2f"|format(client.discount) }}%</td>
-                  <td>
-                    <a
-                      href="/manager/client/{{ client.id }}/edit"
-                      class="btn btn-sm btn-info"
-                      >Редактировать</a
-                    >
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+    <div class="tab-content pt-3" id="managerTabsContent">
+        <!-- === ВКЛАДКА КЛИЕНТЫ === -->
+        <div class="tab-pane fade show active" id="clients-panel-manager" role="tabpanel">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">Список клиентов</h5></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead><tr><th>ФИО</th><th>Телефон</th><th>Email</th><th>Скидка</th><th>Действия</th></tr></thead>
+                            <tbody>
+                                {% for client in clients %}
+                                <tr>
+                                    <td>{{ client.last_name }} {{ client.first_name }}</td>
+                                    <td>{% set phone = client.contacts|selectattr('contact_type', 'equalto', 'phone')|first %}{{ phone.contact_value if phone else '–' }}</td>
+                                    <td>{% set email = client.contacts|selectattr('contact_type', 'equalto', 'email')|first %}{{ email.contact_value if email else '–' }}</td>
+                                    <td>{{ "%.2f"|format(client.discount) }}%</td>
+                                    <td><a href="/manager/client/{{ client.id }}/edit" class="btn btn-sm btn-info">Редактировать</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ВКЛАДКА СОТРУДНИКИ -->
-    <div class="tab-pane fade" id="staff-panel" role="tabpanel">
-      <div class="card">
-        <div class="card-header"><h5 class="mb-0">Список сотрудников</h5></div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead>
-                <tr>
-                  <th>ФИО</th>
-                  <th>Должность</th>
-                  <th>Оклад</th>
-                  <th>Пол</th>
-                  <th>Телефон</th>
-                  <th>ИНН</th>
-                  <th>СНИЛС</th>
-                  <th>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for s in staff %}
-                <tr>
-                  <td>{{ s.last_name }} {{ s.first_name }}</td>
-                  <td>{{ s.position.name if s.position else '–' }}</td>
-                  <td>{{ "%.2f"|format(s.salary) if s.salary else '–' }}</td>
-                  <td>{{ s.gender or '–' }}</td>
-                  <td>{{ s.phone or '–' }}</td>
-                  <td>{{ s.inn or '–' }}</td>
-                  <td>{{ s.snils or '–' }}</td>
-                  <td>
-                    <a
-                      href="/manager/staff/{{ s.id }}/edit"
-                      class="btn btn-sm btn-info"
-                      >Редактировать</a
-                    >
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+        <!-- === ВКЛАДКА СОТРУДНИКИ === -->
+        <div class="tab-pane fade" id="staff-panel-manager" role="tabpanel">
+             <div class="card">
+                <div class="card-header"><h5 class="mb-0">Список сотрудников</h5></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Оклад</th><th>Действия</th></tr></thead>
+                            <tbody>
+                                {% for s in staff %}
+                                <tr>
+                                    <td>{{ s.last_name }} {{ s.first_name }}</td>
+                                    <td>{{ s.position.name if s.position else '–' }}</td>
+                                    <td>{{ s.phone or '–' }}</td>
+                                    <td>{{ "%.2f"|format(s.salary) if s.salary else '–' }} руб.</td>
+                                    <td><a href="/manager/staff/{{ s.id }}/edit" class="btn btn-sm btn-info">Редактировать</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <!-- === ВКЛАДКА ТРЕНИРОВКИ === -->
+        <div class="tab-pane fade" id="trainings-panel-manager" role="tabpanel">
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addTrainingModalManager">
+                <i class="bi bi-plus-circle me-2"></i>Добавить тренировку
+            </button>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead><tr><th>Название</th><th>Секция</th><th>Тренер</th><th>Тип</th><th>Время начала</th><th>Доступ / Участник</th><th>Лимит</th></tr></thead>
+                    <tbody>
+                        {% for training in trainings %}
+                        <tr>
+                            <td>{{ training.name }}</td>
+                            <td>{{ training.section.name }}</td>
+                            <td>{{ training.trainer.first_name ~ ' ' ~ training.trainer.last_name if training.trainer else '–' }}</td>
+                            <td>{% if training.is_group %}<span class="badge bg-primary">Групповая</span>{% else %}<span class="badge bg-secondary">Индивидуальная</span>{% endif %}</td>
+                            <td>{{ training.start_time|datetimeformat }}</td>
+                            <td>
+                                {% if training.is_group %}{% for sub in training.allowed_subscriptions %}<span class="badge bg-light text-dark me-1">{{ sub.name }}</span>{% endfor %}
+                                {% else %}{% for p in training.participants %}{{p.client.first_name}} {{p.client.last_name}}{% endfor %}{% endif %}
+                            </td>
+                            <td>{{ training.max_participants }} чел.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
+
+<!-- Модальное окно: Добавить тренировку (для Менеджера) -->
+<div class="modal fade" id="addTrainingModalManager" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="/manager/add_training" method="post">
+                <div class="modal-header"><h5 class="modal-title">Добавить тренировку в расписание</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3"><label class="form-label">Название</label><input type="text" name="name" class="form-control" required></div>
+                            <div class="mb-3"><label class="form-label">Секция</label><select name="section_id" class="form-select" required><option value="" disabled selected>...</option>{% for section in all_sections %}<option value="{{ section.id }}">{{ section.name }}</option>{% endfor %}</select></div>
+                            <div class="mb-3"><label class="form-label">Тренер</label><select name="trainer_id" class="form-select"><option value="">Без тренера</option>{% for trainer in trainers %}<option value="{{ trainer.id }}">{{ trainer.last_name }} {{ trainer.first_name }}</option>{% endfor %}</select></div>
+                            <div class="mb-3"><label class="form-label">Время начала</label><input type="datetime-local" name="start_time" class="form-control" required></div>
+                            <div class="mb-3"><label class="form-label">Время окончания</label><input type="datetime-local" name="end_time" class="form-control" required></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-3">
+                                <input type="checkbox" name="is_group" class="form-check-input" id="isGroupSwitchManager" value="True">
+                                <label class="form-check-label" for="isGroupSwitchManager"><b>Групповая тренировка</b></label>
+                            </div>
+                            <div id="individual-fields-manager">
+                                <div class="mb-3"><label class="form-label">Клиент для записи</label><select name="client_id" class="form-select"><option value="" disabled selected>Выберите...</option>{% for client in all_clients %}<option value="{{ client.id }}">{{ client.last_name }} {{ client.first_name }}</option>{% endfor %}</select></div>
+                            </div>
+                            <div id="group-fields-manager" style="display: none;">
+                                <div class="mb-3"><label class="form-label">Лимит участников</label><input type="number" name="max_participants" class="form-control" value="10" min="1"></div>
+                                <label class="form-label">Доступ для абонементов:</label>
+                                <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                    {% for sub_type in all_subscription_types %}
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allowed_subscription_type_ids" value="{{ sub_type.id }}" id="sub_type_manager_{{ sub_type.id }}"><label class="form-check-label" for="sub_type_manager_{{ sub_type.id }}">{{ sub_type.name }}</label></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isGroupSwitch = document.getElementById('isGroupSwitchManager');
+    if (isGroupSwitch) {
+        const individualFields = document.getElementById('individual-fields-manager');
+        const groupFields = document.getElementById('group-fields-manager');
+        
+        function toggleTrainingFields() {
+            if (isGroupSwitch.checked) {
+                individualFields.style.display = 'none';
+                individualFields.querySelector('select').required = false;
+                groupFields.style.display = 'block';
+                groupFields.querySelector('input').required = true;
+            } else {
+                individualFields.style.display = 'block';
+                individualFields.querySelector('select').required = true;
+                groupFields.style.display = 'none';
+                groupFields.querySelector('input').required = false;
+            }
+        }
+        toggleTrainingFields();
+        isGroupSwitch.addEventListener('change', toggleTrainingFields);
+    }
+});
+</script>
 {% endblock %}

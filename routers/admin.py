@@ -18,55 +18,44 @@ async def admin_dashboard(
     user: models.User = Depends(require_role("admin")),
     db: Session = Depends(get_db)
 ):
-    # --- 1. ЗАГРУЗКА ДАННЫХ ---
-    # Загружаем все данные, которые нам понадобятся на странице
+    # 1. Загружаем все данные, которые нам понадобятся на странице
     all_clients = db.query(models.Client).options(joinedload(models.Client.contacts)).order_by(models.Client.last_name).all()
     all_staff = db.query(models.Staff).options(joinedload(models.Staff.position)).order_by(models.Staff.last_name).all()
     all_client_subscriptions = db.query(models.ClientSubscription).options(joinedload(models.ClientSubscription.client), joinedload(models.ClientSubscription.subscription_type), joinedload(models.ClientSubscription.status)).all()
     all_sections = db.query(models.Section).order_by(models.Section.name).all()
+    all_trainings = db.query(models.Training).options(joinedload(models.Training.section), joinedload(models.Training.trainer), joinedload(models.Training.allowed_subscriptions), joinedload(models.Training.participants).joinedload(models.TrainingParticipant.client)).order_by(models.Training.start_time.desc()).all()
     
-    # Загружаем тренировки и все связанные с ними данные одним запросом
-    all_trainings = db.query(models.Training).options(
-        joinedload(models.Training.section), 
-        joinedload(models.Training.trainer), 
-        joinedload(models.Training.allowed_subscriptions), 
-        joinedload(models.Training.participants).joinedload(models.TrainingParticipant.client)
-    ).order_by(models.Training.start_time.desc()).all()
-    
-    # --- 2. ОТЛАДОЧНЫЙ ВЫВОД В КОНСОЛЬ ---
-    # Этот блок поможет нам понять, правильно ли сохраняются связи
-    print("\n--- ОТЛАДКА ТРЕНИРОВОК В АДМИНКЕ ---")
-    for t in all_trainings:
-        allowed_subs_names = [s.name for s in t.allowed_subscriptions]
-        trainer_name = f"{t.trainer.first_name} {t.trainer.last_name}" if t.trainer else "НЕТ"
-        print(f"Тренировка '{t.name}' (ID: {t.id}), Тренер: {trainer_name} (ID: {t.trainer_id}), Доступ для: {allowed_subs_names}")
-    print("--- КОНЕЦ ОТЛАДКИ ---\n")
-
-    # --- 3. ДАННЫЕ ДЛЯ ФОРМ В МОДАЛЬНЫХ ОКНАХ ---
+    # Данные для выпадающих списков в модальных окнах
     all_subscription_types = db.query(models.SubscriptionType).order_by(models.SubscriptionType.name).all()
     all_trainers = db.query(models.Staff).join(models.Position).filter(models.Position.name == 'Тренер').all()
     all_positions = db.query(models.Position).all()
     all_statuses = db.query(models.Status).all()
+
+    # 2. Преобразуем список объектов в список словарей для JavaScript
+    clients_for_js = [serialize_client(c) for c in all_clients]
     
-    # --- 4. ФОРМИРОВАНИЕ КОНТЕКСТА ДЛЯ ШАБЛОНА ---
+    # 3. Формирование контекста для шаблона
     context = {
         "request": request,
         "current_user": user,
         
-        # Переменные для отображения в таблицах
+        # Переменные для отображения в таблицах (используем полные объекты)
         "clients": all_clients,
         "staff": all_staff,
         "client_subscriptions": all_client_subscriptions,
         "sections": all_sections,
         "trainings": all_trainings,
         
-        # Переменные для выпадающих списков в формах
+        # Переменные для форм в модальных окнах
         "all_clients": all_clients, 
         "all_subscription_types": all_subscription_types,
         "all_sections": all_sections,
         "trainers": all_trainers,
         "all_statuses": all_statuses,
         "positions": all_positions,
+        
+        # Специальная переменная для JavaScript
+        "clients_for_js": clients_for_js,
     }
     return request.app.state.templates.TemplateResponse("admin.html", context)
 # --- УПРАВЛЕНИЕ КЛИЕНТАМИ ---
@@ -224,57 +213,18 @@ async def add_section(
     db.commit()
     return RedirectResponse(url="/admin/dashboard?message=Секция успешно добавлена", status_code=303)
 
-@router.post("/add_training")
-async def add_training(
-    db: Session = Depends(get_db),
-    user: models.User = Depends(require_role("admin")),
-    name: str = Form(...),
-    section_id: str = Form(...),
-    start_time: datetime = Form(...),
-    end_time: datetime = Form(...),
-    is_group: bool = Form(False),
-    trainer_id: str = Form(None),
-    max_participants: Optional[int] = Form(None),
-    client_id: Optional[str] = Form(None),
-    allowed_subscription_type_ids: Optional[List[str]] = Form(None)
-):
-    try:
-        if not is_group:
-            if not client_id:
-                return RedirectResponse(url="/admin/dashboard?error=Для индивидуальной тренировки необходимо выбрать клиента", status_code=303)
-            new_training = models.Training(
-                id=generate_id(), name=name, section_id=section_id,
-                trainer_id=trainer_id if trainer_id else None,
-                start_time=start_time, end_time=end_time,
-                is_group=False, max_participants=1
-            )
-            db.add(new_training)
-            db.flush()
-            participant = models.TrainingParticipant(
-                training_id=new_training.id, client_id=client_id, status_name='confirmed'
-            )
-            db.add(participant)
-            message = "Индивидуальная тренировка создана и клиент записан"
-        else:
-            if not allowed_subscription_type_ids:
-                return RedirectResponse(url="/admin/dashboard?error=Для групповой тренировки необходимо выбрать хотя бы один тип абонемента для доступа", status_code=303)
-            if not max_participants or max_participants < 1:
-                return RedirectResponse(url="/admin/dashboard?error=Для групповой тренировки необходимо указать лимит участников (больше 0)", status_code=303)
-            allowed_subs = db.query(models.SubscriptionType).filter(
-                models.SubscriptionType.id.in_(allowed_subscription_type_ids)
-            ).all()
-            new_training = models.Training(
-                id=generate_id(), name=name, section_id=section_id,
-                trainer_id=trainer_id if trainer_id else None,
-                start_time=start_time, end_time=end_time,
-                is_group=True, max_participants=max_participants,
-                allowed_subscriptions=allowed_subs
-            )
-            db.add(new_training)
-            message = "Групповая тренировка успешно создана"
-        db.commit()
-        return RedirectResponse(url=f"/admin/dashboard?message={message}", status_code=303)
-    except Exception as e:
-        db.rollback()
-        print(f"ОШИБКА при создании тренировки: {e}")
-        return RedirectResponse(url="/admin/dashboard?error=Произошла ошибка при создании тренировки", status_code=303)
+def serialize_client(client: models.Client) -> dict:
+    """Преобразует объект Client SQLAlchemy в словарь, готовый для JSON."""
+    return {
+        "id": client.id,
+        "last_name": client.last_name,
+        "first_name": client.first_name,
+        "middle_name": client.middle_name,
+        "reg_date": client.reg_date.isoformat() if client.reg_date else None,
+        "discount": float(client.discount),
+        "contacts": [
+            {"contact_type": c.contact_type, "contact_value": c.contact_value}
+            for c in client.contacts
+        ]
+        # Рефералов мы убрали, так что их здесь нет
+    }

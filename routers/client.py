@@ -18,16 +18,17 @@ async def client_dashboard(
     user: models.User = Depends(require_role("client")),
     db: Session = Depends(get_db)
 ):
-    # 1. Загружаем клиента и его связанные данные
+    # 1. Загружаем клиента и все его связанные данные одним запросом
     client = db.query(models.Client).options(
+        joinedload(models.Client.contacts),
         joinedload(models.Client.subscriptions).joinedload(models.ClientSubscription.subscription_type),
-        joinedload(models.Client.participants)
+        joinedload(models.Client.participants).joinedload(models.TrainingParticipant.training).joinedload(models.Training.section)
     ).filter_by(id=user.client_id).first()
 
     if not client:
         return RedirectResponse(url="/?error=Не удалось найти данные клиента.", status_code=303)
 
-    # 2. Логика определения доступных тренировок
+    # 2. Логика определения доступных для записи тренировок
     active_subscription_type_ids = {
         sub.subscription_type_id 
         for sub in client.subscriptions 
@@ -38,30 +39,24 @@ async def client_dashboard(
     
     available_trainings = []
     if active_subscription_type_ids:
-        # --- ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ЛОГИКА ЗАПРОСА ---
-        # Находим все будущие тренировки, которые...
-        query = db.query(models.Training).filter(
+        # Ищем все будущие ГРУППОВЫЕ тренировки, которые:
+        # - доступны по абонементам клиента
+        # - и на которые он еще не записан
+        available_trainings = db.query(models.Training).join(
+            models.training_subscription_access
+        ).filter(
+            models.training_subscription_access.c.subscription_type_id.in_(active_subscription_type_ids),
             models.Training.start_time > datetime.now(),
-            # ...имеют хотя бы один разрешенный абонемент из списка активных у клиента
-            models.Training.allowed_subscriptions.any(
-                models.SubscriptionType.id.in_(active_subscription_type_ids)
-            )
-        )
+            models.Training.is_group == True, # Явно указываем, что ищем только групповые
+            ~models.Training.id.in_(my_training_ids)
+        ).distinct().order_by(models.Training.start_time).all()
 
-        # Если у клиента уже есть записи, добавляем условие для их исключения
-        if my_training_ids:
-            query = query.filter(~models.Training.id.in_(my_training_ids))
-        
-        available_trainings = query.order_by(models.Training.start_time).all()
-
-    # 3. Формирование контекста для шаблона
-    my_trainings = db.query(models.Training).join(models.TrainingParticipant).filter(
-        models.TrainingParticipant.client_id == user.client_id
-    ).order_by(models.Training.start_time).all()
+    # 3. Собираем список тренировок, на которые клиент уже записан
+    my_trainings_list = sorted([p.training for p in client.participants if p.training], key=lambda t: t.start_time)
 
     context = {
         "request": request, "current_user": user, "client": client,
-        "subscriptions": client.subscriptions, "my_trainings": my_trainings,
+        "subscriptions": client.subscriptions, "my_trainings": my_trainings_list,
         "available_trainings": available_trainings
     }
     return request.app.state.templates.TemplateResponse("client.html", context)
