@@ -9,10 +9,8 @@ from database import get_db, models
 from services.auth import authenticate_user, create_access_token, get_current_user_from_cookie
 from routers import admin_router, tech_admin_router, manager_router, cashier_router, trainer_router, client_router
 
-# Lifespan теперь не нужен для инициализации
 app = FastAPI(title="Спортивный клуб")
 
-# Подключаем все роутеры
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(tech_admin_router, prefix="/tech_admin", tags=["Tech Admin"])
 app.include_router(manager_router, prefix="/manager", tags=["Manager"])
@@ -20,7 +18,6 @@ app.include_router(cashier_router, prefix="/cashier", tags=["Cashier"])
 app.include_router(trainer_router, prefix="/trainer", tags=["Trainer"])
 app.include_router(client_router, prefix="/client", tags=["Client"])
 
-# Настраиваем статику и шаблоны
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -31,7 +28,6 @@ templates.env.filters['datetimeformat'] = datetime_format_filter
 app.state.templates = templates
 
 
-# --- Основные эндпоинты ---
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request, user: models.User = Depends(get_current_user_from_cookie)):
     if user:

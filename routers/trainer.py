@@ -1,5 +1,3 @@
-# routers/trainer.py
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session, joinedload
@@ -16,10 +14,8 @@ async def trainer_dashboard(
     user: models.User = Depends(require_role("trainer")),
     db: Session = Depends(get_db)
 ):
-    # --- ИСПРАВЛЕННЫЙ ЗАПРОС ---
     my_upcoming_trainings = db.query(models.Training).options(
         joinedload(models.Training.section),
-        # Подгружаем участников и сразу же их клиентов, чтобы в шаблоне был доступ к именам
         joinedload(models.Training.participants).joinedload(models.TrainingParticipant.client)
     ).filter(
         models.Training.trainer_id == user.staff_id,

@@ -1,5 +1,3 @@
-# routers/manager.py
-
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
@@ -13,19 +11,16 @@ from services.utils import generate_id
 
 router = APIRouter()
 
-# --- Главная панель менеджера ---
 @router.get("/dashboard", response_class=HTMLResponse)
 async def manager_dashboard(
     request: Request,
     user: models.User = Depends(require_role("manager")),
     db: Session = Depends(get_db)
 ):
-    # Загружаем все необходимые данные для отображения на панели
     all_clients = db.query(models.Client).options(joinedload(models.Client.contacts)).order_by(models.Client.last_name).all()
     all_staff = db.query(models.Staff).options(joinedload(models.Staff.position)).order_by(models.Staff.last_name).all()
     all_trainings = db.query(models.Training).options(joinedload(models.Training.section), joinedload(models.Training.trainer), joinedload(models.Training.participants)).order_by(models.Training.start_time.desc()).all()
     
-    # Данные, необходимые для модальных окон
     all_sections = crud.get_sections(db)
     all_trainers = db.query(models.Staff).join(models.Position).filter(models.Position.name == 'Тренер').all()
     all_subscription_types = db.query(models.SubscriptionType).order_by(models.SubscriptionType.name).all()
@@ -36,7 +31,6 @@ async def manager_dashboard(
         "clients": all_clients,
         "staff": all_staff,
         "trainings": all_trainings,
-        # Передаем данные для форм
         "all_clients": all_clients,
         "all_sections": all_sections,
         "trainers": all_trainers,
@@ -45,7 +39,6 @@ async def manager_dashboard(
     return request.app.state.templates.TemplateResponse("manager.html", context)
 
 
-# --- УПРАВЛЕНИЕ КЛИЕНТАМИ ---
 @router.get("/client/{client_id}/edit", response_class=HTMLResponse)
 async def edit_client_form(
     request: Request,
@@ -103,7 +96,6 @@ async def update_client_by_manager(
     return RedirectResponse(url="/manager/dashboard?message=Данные клиента обновлены", status_code=303)
 
 
-# --- УПРАВЛЕНИЕ СОТРУДНИКАМИ ---
 @router.get("/staff/{staff_id}/edit", response_class=HTMLResponse)
 async def edit_staff_form(request: Request, staff_id: str, user: models.User = Depends(require_role("manager")), db: Session = Depends(get_db)):
     staff = crud.get_single_staff(db, staff_id=staff_id)
@@ -171,7 +163,6 @@ async def update_staff(
         return RedirectResponse(url=f"/manager/staff/{staff_id}/edit?error={error_message}", status_code=303)
 
 
-# --- УПРАВЛЕНИЕ ТРЕНИРОВКАМИ ---
 @router.post("/add_training")
 async def add_training_by_manager(
     db: Session = Depends(get_db),
@@ -187,7 +178,6 @@ async def add_training_by_manager(
     allowed_subscription_type_ids: Optional[List[str]] = Form(None)
 ):
     try:
-        # --- Шаг 1: Создаем основную запись о тренировке ---
         new_training = models.Training(
             id=generate_id(),
             name=name,
@@ -199,40 +189,34 @@ async def add_training_by_manager(
             max_participants=1 if not is_group else max_participants
         )
         db.add(new_training)
-        # Делаем первый коммит, чтобы тренировка появилась в базе
         db.commit()
         db.refresh(new_training)
         
         message = ""
 
-        # --- Шаг 2: Добавляем связи (участников или доступы) ---
         if not is_group:
             if not client_id:
-                # Если это произошло, откатываем создание тренировки
                 db.delete(new_training)
                 db.commit()
                 return RedirectResponse(url="/manager/dashboard?error=Для индивидуальной тренировки необходимо выбрать клиента", status_code=303)
             
-            # Создаем запись об участнике
             participant = models.TrainingParticipant(
                 training_id=new_training.id, client_id=client_id, status_name='confirmed'
             )
             db.add(participant)
             message = "Индивидуальная тренировка создана и клиент записан"
-        else: # Если групповая
+        else:
             if not allowed_subscription_type_ids:
                 db.delete(new_training)
                 db.commit()
                 return RedirectResponse(url="/manager/dashboard?error=Для групповой тренировки необходимо выбрать тип абонемента", status_code=303)
             
-            # Находим объекты абонементов и добавляем их в связь
             allowed_subs = db.query(models.SubscriptionType).filter(
                 models.SubscriptionType.id.in_(allowed_subscription_type_ids)
             ).all()
             new_training.allowed_subscriptions.extend(allowed_subs)
             message = "Групповая тренировка успешно создана"
 
-        # Финальный коммит для сохранения связей
         db.commit()
         return RedirectResponse(url=f"/manager/dashboard?message={message}", status_code=303)
 

@@ -20,7 +20,6 @@ async def tech_admin_dashboard(
     equipment_list = db.query(models.Equipment).all()
     sections = crud.get_sections(db)
 
-    # Добавляем рассчитанную дату окончания эксплуатации
     for item in equipment_list:
         if item.purchase_date and item.warranty_months:
             item.end_of_life_date = item.purchase_date + relativedelta(months=item.warranty_months)
@@ -48,16 +47,13 @@ async def add_equipment(
     last_maintenance_date: Optional[str] = Form(None),
     quantity: int = Form(...)
 ):
-    # Преобразуем строки в даты вручную
     try:
         purchase_date_obj = datetime.strptime(purchase_date, '%Y-%m-%d').date()
         
         last_maintenance_date_obj = None
-        # Проверяем, что строка не пустая, перед преобразованием
         if last_maintenance_date:
             last_maintenance_date_obj = datetime.strptime(last_maintenance_date, '%Y-%m-%d').date()
     except ValueError:
-        # Если формат даты неправильный
         return RedirectResponse(url="/tech_admin/dashboard?error=Неверный формат даты. Используйте ГГГГ-ММ-ДД.", status_code=303)
 
     new_equipment = models.Equipment(

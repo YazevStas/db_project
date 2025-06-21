@@ -38,13 +38,11 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[mod
         return None
     return user
 
-# --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ---
 async def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("access_token")
     if not token:
         return None
 
-    # Проверяем и убираем префикс "Bearer ", если он есть
     if token.startswith("Bearer "):
         token = token.split(" ")[1]
 
@@ -54,7 +52,6 @@ async def get_current_user_from_cookie(request: Request, db: Session = Depends(g
         if username is None:
             return None
     except JWTError:
-        # Если токен невалидный (неправильный формат, истек срок и т.д.)
         return None
     
     user = crud.get_user_by_username(db, username=username)
@@ -64,10 +61,7 @@ def require_role(required_role: str):
     """Фабрика зависимостей для проверки роли пользователя."""
     async def role_checker(request: Request, user: models.User = Depends(get_current_user_from_cookie)):
         if not user:
-            # Вместо ошибки перенаправляем на страницу входа
             return RedirectResponse(url="/?error=Требуется аутентификация", status_code=303)
-        
-        # Админ имеет доступ ко всему
         if user.role != required_role and user.role != 'admin':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, 

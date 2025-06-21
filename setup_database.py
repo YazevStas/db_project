@@ -1,8 +1,6 @@
 import sys
 import os
 
-# Добавляем корневую папку проекта в путь, чтобы можно было импортировать модули
-# Это нужно, чтобы скрипт мог найти папки database, services и т.д.
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
@@ -21,7 +19,6 @@ def setup_database():
         return
 
     print("Удаление старых таблиц...")
-    # Удаляем все таблицы в обратном порядке зависимостей, чтобы избежать ошибок
     Base.metadata.drop_all(bind=engine)
     print("Старые таблицы удалены.")
 

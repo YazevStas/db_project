@@ -1,61 +1,53 @@
-{% extends "base.html" %}
-
-{% block title %}Вход в систему{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Вход в систему{% endblock %} {% block
+content %}
 <div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-5 col-xl-4">
-        <div class="card shadow-lg">
-            <div class="card-header bg-primary text-white text-center">
-                <h4 class="mb-0">Вход в систему</h4>
-            </div>
-            <div class="card-body p-4">
-
-                {# --- Блок для отображения ошибок --- #}
-                {% if request.query_params.get('error') %}
-                <div class="alert alert-danger" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    {{ request.query_params.get('error') }}
-                </div>
-                {% endif %}
-                
-                {# --- Форма входа --- #}
-                {# Ключевое изменение: action="/login" указывает, куда отправлять данные формы #}
-                <form action="/login" method="post">
-                    
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Имя пользователя</label>
-                        <input 
-                            type="text" 
-                            class="form-control" 
-                            id="username" 
-                            name="username" 
-                            required
-                            autocomplete="username"
-                            autofocus>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="password" class="form-label">Пароль</label>
-                        <input 
-                            type="password" 
-                            class="form-control" 
-                            id="password" 
-                            name="password" 
-                            required
-                            autocomplete="current-password">
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Войти
-                        </button>
-                    </div>
-
-                </form>
-
-            </div>
+  <div class="col-md-6 col-lg-5 col-xl-4">
+    <div class="card shadow-lg">
+      <div class="card-header bg-primary text-white text-center">
+        <h4 class="mb-0">Вход в систему</h4>
+      </div>
+      <div class="card-body p-4">
+        {# --- Блок для отображения ошибок --- #} {% if
+        request.query_params.get('error') %}
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          {{ request.query_params.get('error') }}
         </div>
+        {% endif %} {# --- Форма входа --- #}
+        <form action="/login" method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Имя пользователя</label>
+            <input
+              type="text"
+              class="form-control"
+              id="username"
+              name="username"
+              required
+              autocomplete="username"
+              autofocus
+            />
+          </div>
+
+          <div class="mb-4">
+            <label for="password" class="form-label">Пароль</label>
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

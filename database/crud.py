@@ -3,7 +3,6 @@ from . import models
 from services.utils import generate_id
 from services.auth import get_password_hash
 
-# CRUD операции для клиентов
 def get_clients(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Client).offset(skip).limit(limit).all()
 
@@ -33,7 +32,6 @@ def delete_client(db: Session, client_id: str):
         return True
     return False
 
-# CRUD операции для сотрудников
 def get_staff(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Staff).offset(skip).limit(limit).all()
 
@@ -43,7 +41,6 @@ def get_sections(db: Session, skip: int = 0, limit: int = 100):
 def get_single_staff(db: Session, staff_id: str):
     return db.query(models.Staff).filter(models.Staff.id == staff_id).first()
 
-# --- ИЗМЕНЕННАЯ ФУНКЦИЯ ---
 def create_staff(db: Session, staff_data: dict):
     staff_id = generate_id()
     staff = models.Staff(
@@ -58,7 +55,6 @@ def create_staff(db: Session, staff_data: dict):
         hire_date=staff_data["hire_date"],
         position_id=staff_data["position_id"],
         phone=staff_data.get("phone"),
-        # Новые поля
         salary=staff_data.get("salary"),
         education=staff_data.get("education"),
         address=staff_data.get("address"),
@@ -78,7 +74,6 @@ def delete_staff(db: Session, staff_id: str):
         return True
     return False
 
-# CRUD операции для пользователей
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 

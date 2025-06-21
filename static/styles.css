@@ -1,109 +1,106 @@
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
-    padding-top: 20px;
-    padding-bottom: 60px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  padding-top: 20px;
+  padding-bottom: 60px;
 }
 
-/* Применяем стили только к главному контейнеру страницы, а не к тому, что в navbar */
 body > .container {
-    background-color: white;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-    margin-top: 20px;
-    margin-bottom: 40px;
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  margin-bottom: 40px;
 }
 
 .card {
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 25px;
-    transition: transform 0.3s;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 25px;
+  transition: transform 0.3s;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .card-header {
-    border-top-left-radius: 10px !important;
-    border-top-right-radius: 10px !important;
-    font-weight: 600;
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+  font-weight: 600;
 }
 
 .nav-tabs .nav-link {
-    font-weight: 500;
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-right: 10px;
+  font-weight: 500;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-right: 10px;
 }
 
 .nav-tabs .nav-link.active {
-    background-color: transparent;
-    border-bottom: 3px solid #0d6efd;
-    color: #0d6efd;
+  background-color: transparent;
+  border-bottom: 3px solid #0d6efd;
+  color: #0d6efd;
 }
 
 .table th {
-    background-color: #f1f5f9;
-    font-weight: 600;
+  background-color: #f1f5f9;
+  font-weight: 600;
 }
 
 .btn {
-    border-radius: 5px;
-    font-weight: 500;
+  border-radius: 5px;
+  font-weight: 500;
 }
 
-.form-control, .form-select {
-    border-radius: 5px;
-    padding: 10px;
+.form-control,
+.form-select {
+  border-radius: 5px;
+  padding: 10px;
 }
 
 .list-group-item {
-    border-radius: 5px !important;
-    margin-bottom: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 5px !important;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .badge {
-    font-weight: 500;
-    padding: 6px 10px;
-    border-radius: 10px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 10px;
 }
 
 footer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background-color: #f8f9fa;
-    border-top: 1px solid #dee2e6;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
 }
 
 @media (max-width: 768px) {
-    .container {
-        padding: 15px;
-    }
-    
-    .card {
-        margin-bottom: 15px;
-    }
+  .container {
+    padding: 15px;
+  }
+
+  .card {
+    margin-bottom: 15px;
+  }
 }
-/* Делаем текст выпадающего меню видимым на синем фоне */
 .navbar .nav-item.dropdown .nav-link {
-    color: rgba(255, 255, 255, 0.9) !important; /* Белый цвет с легкой прозрачностью */
-    font-weight: 500;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 500;
 }
 
-/* При наведении делаем текст ярче */
 .navbar .nav-item.dropdown .nav-link:hover {
-    color: #ffffff !important; /* Ярко-белый цвет */
+  color: #ffffff !important;
 }
 
-/* Убираем белое "пятно" (это фон контейнера) */
 .navbar .container {
-    background-color: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }

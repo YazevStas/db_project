@@ -1,5 +1,3 @@
-# routers/client.py
-
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
@@ -18,7 +16,6 @@ async def client_dashboard(
     user: models.User = Depends(require_role("client")),
     db: Session = Depends(get_db)
 ):
-    # 1. Загружаем клиента и все его связанные данные одним запросом
     client = db.query(models.Client).options(
         joinedload(models.Client.contacts),
         joinedload(models.Client.subscriptions).joinedload(models.ClientSubscription.subscription_type),
@@ -28,7 +25,6 @@ async def client_dashboard(
     if not client:
         return RedirectResponse(url="/?error=Не удалось найти данные клиента.", status_code=303)
 
-    # 2. Логика определения доступных для записи тренировок
     active_subscription_type_ids = {
         sub.subscription_type_id 
         for sub in client.subscriptions 
@@ -39,19 +35,15 @@ async def client_dashboard(
     
     available_trainings = []
     if active_subscription_type_ids:
-        # Ищем все будущие ГРУППОВЫЕ тренировки, которые:
-        # - доступны по абонементам клиента
-        # - и на которые он еще не записан
         available_trainings = db.query(models.Training).join(
             models.training_subscription_access
         ).filter(
             models.training_subscription_access.c.subscription_type_id.in_(active_subscription_type_ids),
             models.Training.start_time > datetime.now(),
-            models.Training.is_group == True, # Явно указываем, что ищем только групповые
+            models.Training.is_group == True,
             ~models.Training.id.in_(my_training_ids)
         ).distinct().order_by(models.Training.start_time).all()
 
-    # 3. Собираем список тренировок, на которые клиент уже записан
     my_trainings_list = sorted([p.training for p in client.participants if p.training], key=lambda t: t.start_time)
 
     context = {
@@ -62,7 +54,6 @@ async def client_dashboard(
     return request.app.state.templates.TemplateResponse("client.html", context)
 
 
-# Эндпоинт для записи на тренировку. Добавим такую же проверку доступа.
 @router.post("/book_training")
 async def book_training(
     user: models.User = Depends(require_role("client")),
@@ -74,7 +65,6 @@ async def book_training(
         if sub.status_name == 'active' and sub.end_date >= datetime.now().date()
     }
     
-    # Проверяем, есть ли у тренировки хотя бы один разрешенный абонемент из активных у клиента
     has_access = db.query(models.Training).filter(
         models.Training.id == training_id,
         models.Training.allowed_subscriptions.any(
@@ -117,7 +107,6 @@ async def update_profile(
     
     client = crud.get_client(db, user.client_id)
     if not client:
-        # Добавим проверку, на всякий случай
         return RedirectResponse(url="/?error=Клиент не найден", status_code=303)
 
     client.last_name = last_name
@@ -126,7 +115,6 @@ async def update_profile(
     
     contact_details = {"phone": phone_to_save, "email": email}
     for c_type, c_value in contact_details.items():
-        # Загружаем контакты перед работой с ними
         contact = db.query(models.ClientContact).filter_by(client_id=user.client_id, contact_type=c_type).first()
         if c_value:
             if contact:

@@ -31,7 +31,6 @@ class Client(Base):
     warnings = relationship("Warning", back_populates="client", cascade="all, delete-orphan")
     contacts = relationship("ClientContact", back_populates="client", cascade="all, delete-orphan")
 
-# --- ИЗМЕНЕННАЯ МОДЕЛЬ ---
 class Staff(Base):
     __tablename__ = 'staff'
     id = Column(String(50), primary_key=True)
@@ -42,20 +41,17 @@ class Staff(Base):
     gender = Column(String(1))
     phone = Column(String(20), nullable=True)
     
-    # Паспортные и личные данные
     passport_series = Column(String(4), nullable=True)
     passport_number = Column(String(6), nullable=True)
     address = Column(String(255), nullable=True)
     education = Column(String(255), nullable=True)
     
-    # Финансовые и кадровые данные
     inn = Column(String(12), unique=True, nullable=False)
     snils = Column(String(11), unique=True, nullable=False)
     hire_date = Column(Date, nullable=False)
     position_id = Column(String(50), ForeignKey('positions.id'))
     salary = Column(Numeric(10, 2), nullable=True) # Оклад
 
-    # Связи
     position = relationship("Position")
     user = relationship("User", back_populates="staff", uselist=False, cascade="all, delete-orphan")
     trainings = relationship("Training", back_populates="trainer")
@@ -71,12 +67,10 @@ class Equipment(Base):
     purchase_date = Column(Date, nullable=False) # Дата покупки
     warranty_months = Column(Integer, nullable=False) # Срок гарантии в месяцах
     
-    # Новое поле для даты последнего обслуживания
     last_maintenance_date = Column(Date, nullable=True) 
     
     quantity = Column(Integer, default=1, nullable=False)
 
-    # Связи
     section = relationship("Section")
 
 class User(Base):

@@ -2,7 +2,6 @@ import os
 from sqlalchemy import text
 from .session import engine
 
-# --- Вот эта функция, которую не может найти __init__.py ---
 def create_sql_objects():
     """Создает триггеры, представления и другие SQL-объекты, выполняя скрипт целиком."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -17,8 +16,6 @@ def create_sql_objects():
 
     try:
         with engine.connect() as connection:
-            # Выполняем весь скрипт как одну транзакцию.
-            # Это правильный способ для создания функций и триггеров.
             connection.execute(text(sql_script))
             connection.commit()
         print("SQL-скрипт успешно выполнен.")

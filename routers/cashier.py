@@ -10,7 +10,6 @@ from services.utils import generate_id
 router = APIRouter()
 
 @router.get("/dashboard", response_class=HTMLResponse)
-# ... (функция dashboard без изменений)
 async def cashier_dashboard(
     request: Request,
     user: models.User = Depends(require_role("cashier")),
@@ -22,7 +21,6 @@ async def cashier_dashboard(
     ).order_by(models.Payment.date.desc()).limit(50).all()
     all_clients = db.query(models.Client).order_by(models.Client.last_name).all()
     all_subscription_types = db.query(models.SubscriptionType).order_by(models.SubscriptionType.name).all()
-    # Получаем все методы оплаты для формы
     payment_methods = db.query(models.PaymentMethod).all()
 
     context = {
@@ -31,7 +29,7 @@ async def cashier_dashboard(
         "payments": payments,
         "all_clients": all_clients,
         "all_subscription_types": all_subscription_types,
-        "payment_methods": payment_methods  # <-- Передаем в шаблон
+        "payment_methods": payment_methods
     }
     return request.app.state.templates.TemplateResponse("cashier.html", context)
 
@@ -44,7 +42,7 @@ async def sell_subscription(
     subscription_type_id: str = Form(...),
     start_date: datetime = Form(...),
     end_date: datetime = Form(...),
-    method_id: str = Form(...)  # <--- ПОЛУЧАЕМ МЕТОД ОПЛАТЫ
+    method_id: str = Form(...)
 ):
     client_sub = models.ClientSubscription(
         id=generate_id(), 
@@ -66,17 +64,13 @@ async def sell_subscription(
             client_subscription_id=client_sub.id,
             amount=amount, 
             date=datetime.now().date(), 
-            method_id=method_id  # <--- ИСПОЛЬЗУЕМ ПОЛУЧЕННЫЙ МЕТОД
+            method_id=method_id
         )
         db.add(new_payment)
         db.commit()
 
     return RedirectResponse(url="/cashier/dashboard?message=Абонемент успешно продан и платеж зарегистрирован", status_code=303)
 
-
-# --- Старые функции, если они нужны ---
-# Если регистрация клиента и ручное добавление платежа больше не нужны, их можно удалить.
-# Оставим их на всякий случай.
 
 @router.post("/add_payment")
 async def add_payment(
